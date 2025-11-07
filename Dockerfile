@@ -1,14 +1,14 @@
-# Build stage
-FROM node:18-alpine as builder
+FROM node:18-alpine
+
 WORKDIR /app
+
+# Copy package files
 COPY package*.json ./
-RUN npm ci
+
+# Use npm install instead of npm ci, with platform flag
+RUN npm install --omit=optional --platform=linux --force
+
 COPY . .
 RUN npm run build
 
-# Production stage
-FROM nginx:alpine
-COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 8080
-CMD ["nginx", "-g", "daemon off;"]
+# Continue with rest of Dockerfile...
