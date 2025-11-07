@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Upload, FileText, AlertCircle, CheckCircle, TrendingUp, Shield, Lightbulb, Menu, X, Download, Filter } from 'lucide-react';
 import Phase2Results from './Phase2Results';
 import Phase3Results from './Phase3Results';
-import Phase1FilterPanel from './Phase1FilterPanel';
+import Phase1FilterPanel from './phase1FilterPanel';
 import "../styles/phase3.css";
 import LifecycleReportView from './LifecycleReportView';
 
