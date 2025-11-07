@@ -1,19 +1,30 @@
-FROM node:18
+FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy only package.json (not package-lock.json)
-COPY package.json ./
-COPY .npmrc ./
+# Copy and install backend dependencies
+COPY backend/package*.json ./backend/
+WORKDIR /app/backend
+RUN npm ci --only=production
 
-# Fresh install without lock file
-RUN npm install --platform=linux
+# Copy and install frontend dependencies
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
 
+# Build frontend
 COPY . .
-
-# Build the frontend
 RUN npm run build
 
-EXPOSE 8080
+# Copy backend source
+COPY backend/src ./backend/src
 
-CMD ["npm", "start"]
+# Copy frontend build to backend public folder
+RUN mkdir -p backend/public
+RUN cp -r dist/* backend/public/
+
+WORKDIR /app/backend
+
+# Run the backend server (which will serve the frontend too)
+EXPOSE 8080
+CMD ["node", "src/server.js"]
