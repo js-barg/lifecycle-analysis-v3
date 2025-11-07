@@ -1,3 +1,7 @@
+# Add this options section at the TOP of your cloudbuild.yaml
+options:
+  logging: CLOUD_LOGGING_ONLY
+
 steps:
   # Build the container image
   - name: 'gcr.io/cloud-builders/docker'
@@ -7,7 +11,7 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'gcr.io/$PROJECT_ID/lifecycle-analysis:$COMMIT_SHA']
   
-  # Deploy to Cloud Run with Cloud SQL
+  # Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -24,18 +28,8 @@ steps:
       - '8080'
       - '--allow-unauthenticated'
       - '--add-cloudsql-instances'
-      - '$PROJECT_ID:us-central1:lifecycle-db'  # Add Cloud SQL connection
-      - '--set-env-vars'
-      - 'NODE_ENV=production'
+      - 'lifecycle-analysis-477518:us-central1:lifecycle-db'
       - '--set-secrets'
-      - 'DATABASE_URL=database-url:latest,GOOGLE_CSE_API_KEY=google-cse-api:latest,GOOGLE_CSE_CX=google-cse-cx:latest'
-      - '--memory'
-      - '2Gi'  # Increase memory for Excel generation
-      - '--cpu'
-      - '2'
-      - '--timeout'
-      - '300'  # 5 minutes for AI research
-      - '--max-instances'
-      - '10'
+      - 'DATABASE_URL=database-url:latest'
 
 timeout: '1200s'
