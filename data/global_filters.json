@@ -1,0 +1,108 @@
+{
+  "test": {
+    "name": "test",
+    "config": {
+      "product_id": "",
+      "type": {
+        "include": [],
+        "exclude": []
+      },
+      "category": {
+        "include": [],
+        "exclude": []
+      },
+      "mfg": {
+        "include": [],
+        "exclude": []
+      },
+      "description": "power",
+      "risk_level": {
+        "include": [],
+        "exclude": []
+      },
+      "support_status": {
+        "include": [],
+        "exclude": []
+      }
+    },
+    "createdAt": "2025-10-18T01:59:19.602Z",
+    "updatedAt": "2025-10-18T01:59:19.602Z",
+    "usageCount": 0
+  },
+  "Filter-2": {
+    "name": "Filter-2",
+    "config": {
+      "product_id": "",
+      "type": {
+        "include": [],
+        "exclude": []
+      },
+      "category": {
+        "include": [],
+        "exclude": []
+      },
+      "mfg": {
+        "include": [],
+        "exclude": []
+      },
+      "description": "",
+      "risk_level": {
+        "include": [],
+        "exclude": []
+      },
+      "support_status": {
+        "include": [],
+        "exclude": []
+      }
+    },
+    "createdAt": "2025-10-18T02:06:28.836Z",
+    "updatedAt": "2025-10-18T02:06:28.836Z",
+    "usageCount": 0
+  },
+  "Filter-3": {
+    "name": "Filter-3",
+    "config": {
+      "product_id": "",
+      "type": {
+        "include": [
+          "CARD"
+        ],
+        "exclude": []
+      },
+      "category": {
+        "include": [],
+        "exclude": []
+      },
+      "mfg": {
+        "include": [],
+        "exclude": []
+      },
+      "description": "",
+      "risk_level": {
+        "include": [],
+        "exclude": []
+      },
+      "support_status": {
+        "include": [],
+        "exclude": []
+      }
+    },
+    "createdAt": "2025-10-18T02:08:53.499Z",
+    "updatedAt": "2025-10-18T02:08:53.499Z",
+    "usageCount": 0
+  },
+  "Test Filter": {
+    "name": "Test Filter",
+    "config": {
+      "risk_level": {
+        "exclude": [],
+        "include": [
+          "high"
+        ]
+      }
+    },
+    "createdAt": "2025-10-18T03:54:29.548Z",
+    "updatedAt": "2025-10-18T03:54:29.549Z",
+    "usageCount": 0
+  }
+}

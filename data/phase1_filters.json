@@ -1,0 +1,181 @@
+{
+  "filterSets": [
+    {
+      "id": "default-exclude-common",
+      "name": "Exclude Common Accessories",
+      "description": "Excludes power supplies, cables, fans, memory modules, and common accessories",
+      "isDefault": true,
+      "isSystem": true,
+      "filters": {
+        "productIds": {
+          "patterns": [
+            "*PWR*",
+            "*POWER*",
+            "*FAN*",
+            "*MEM-*",
+            "*CAB-*",
+            "*CABLE*",
+            "*BRACKET*",
+            "*SCREW*",
+            "*NUT*",
+            "*RAIL*"
+          ],
+          "regexPatterns": []
+        },
+        "descriptions": {
+          "patterns": [
+            "*power supply*",
+            "*power cord*",
+            "*fan module*",
+            "*fan tray*",
+            "*memory*",
+            "*RAM*",
+            "*cable*",
+            "*bracket*",
+            "*mounting*",
+            "*screw*",
+            "*accessory kit*",
+            "*rail kit*"
+          ],
+          "regexPatterns": []
+        },
+        "productTypes": {
+          "exact": [
+            "Software",
+            "License",
+            "Accessory",
+            "Cable",
+            "Memory",
+            "Power Supply",
+            "Fan",
+            "Documentation"
+          ],
+          "patterns": [
+            "*Software*",
+            "*License*",
+            "*Subscription*"
+          ]
+        }
+      },
+      "stats": {
+        "usageCount": 0,
+        "lastUsed": null,
+        "createdAt": "2025-10-26T21:52:26.440Z",
+        "updatedAt": "2025-10-26T21:52:26.440Z"
+      }
+    },
+    {
+      "id": "default-hardware-only",
+      "name": "Hardware Only",
+      "description": "Excludes all software, licenses, and services",
+      "isDefault": true,
+      "isSystem": true,
+      "filters": {
+        "productIds": {
+          "patterns": [
+            "*LIC-*",
+            "*SW-*",
+            "*SVC-*",
+            "*SUB-*"
+          ],
+          "regexPatterns": []
+        },
+        "descriptions": {
+          "patterns": [
+            "*license*",
+            "*software*",
+            "*subscription*",
+            "*service*",
+            "*support*",
+            "*warranty*",
+            "*maintenance*"
+          ],
+          "regexPatterns": []
+        },
+        "productTypes": {
+          "exact": [
+            "Software",
+            "License",
+            "Service",
+            "Subscription",
+            "Support",
+            "Warranty",
+            "Maintenance"
+          ],
+          "patterns": []
+        }
+      },
+      "stats": {
+        "usageCount": 0,
+        "lastUsed": null,
+        "createdAt": "2025-10-26T21:52:26.440Z",
+        "updatedAt": "2025-10-26T21:52:26.440Z"
+      }
+    },
+    {
+      "id": "default-network-focus",
+      "name": "Network Equipment Focus",
+      "description": "Excludes non-networking items, keeps switches, routers, firewalls, etc.",
+      "isDefault": true,
+      "isSystem": true,
+      "filters": {
+        "productIds": {
+          "patterns": [],
+          "regexPatterns": []
+        },
+        "descriptions": {
+          "patterns": [],
+          "regexPatterns": [
+            "^(?!.*(switch|router|firewall|gateway|access point|wireless|network)).*$"
+          ]
+        },
+        "productTypes": {
+          "exact": [],
+          "patterns": [],
+          "excludeAllExcept": [
+            "Networking",
+            "Network",
+            "Switch",
+            "Router",
+            "Firewall",
+            "Wireless"
+          ]
+        }
+      },
+      "stats": {
+        "usageCount": 0,
+        "lastUsed": null,
+        "createdAt": "2025-10-26T21:52:26.440Z",
+        "updatedAt": "2025-10-26T21:52:26.440Z"
+      }
+    },
+    {
+      "id": "no-filter",
+      "name": "No Exclusions",
+      "description": "Process all items without any exclusions",
+      "isDefault": true,
+      "isSystem": true,
+      "filters": {
+        "productIds": {
+          "patterns": [],
+          "regexPatterns": []
+        },
+        "descriptions": {
+          "patterns": [],
+          "regexPatterns": []
+        },
+        "productTypes": {
+          "exact": [],
+          "patterns": []
+        }
+      },
+      "stats": {
+        "usageCount": 0,
+        "lastUsed": null,
+        "createdAt": "2025-10-26T21:52:26.440Z",
+        "updatedAt": "2025-10-26T21:52:26.440Z"
+      }
+    }
+  ],
+  "activeFilterId": "default-exclude-common"
+}

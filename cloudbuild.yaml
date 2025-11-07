@@ -1,0 +1,41 @@
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/lifecycle-analysis:$COMMIT_SHA', '.']
+  
+  # Push the image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/lifecycle-analysis:$COMMIT_SHA']
+  
+  # Deploy to Cloud Run with Cloud SQL
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'lifecycle-analysis'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/lifecycle-analysis:$COMMIT_SHA'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--port'
+      - '8080'
+      - '--allow-unauthenticated'
+      - '--add-cloudsql-instances'
+      - '$PROJECT_ID:us-central1:lifecycle-db'  # Add Cloud SQL connection
+      - '--set-env-vars'
+      - 'NODE_ENV=production'
+      - '--set-secrets'
+      - 'DATABASE_URL=database-url:latest,GOOGLE_CSE_API_KEY=google-cse-api:latest,GOOGLE_CSE_CX=google-cse-cx:latest'
+      - '--memory'
+      - '2Gi'  # Increase memory for Excel generation
+      - '--cpu'
+      - '2'
+      - '--timeout'
+      - '300'  # 5 minutes for AI research
+      - '--max-instances'
+      - '10'
+
+timeout: '1200s'

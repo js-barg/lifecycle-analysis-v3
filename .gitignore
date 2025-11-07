@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Environment files
+.env
+.env.local
+.env.production
+*.pem
+
+# Build outputs
+dist/
+build/
+*.log
+
+# IDE files
+.vscode/
+.idea/
+.DS_Store
+
+# Local database
+*.sqlite
+*.db
+
+# Uploads/temp files
+uploads/
+temp/
+tmp/
+
+# Coverage
+coverage/
+.nyc_output/

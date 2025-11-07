@@ -1,0 +1,266 @@
+{
+  "manufacturers": [
+    {
+      "name": "Cisco",
+      "priority": 1,
+      "patterns": {
+        "keywords": ["AIR-","FET","cisco", "catalyst", "nexus", "meraki", "ios", "asa firewall"],
+        "productPrefixes": ["WS-", "N9K-", "N7K-", "N5K-", "N3K-", "ASA", "AIR-", "C9", "ISR", "ASR", "UCS-", "FPR-", "WSA-", "ESA-", "SG", "CBS", "C1"],
+        "productContains": ["CISCO"],
+        "descriptionPatterns": ["catalyst", "nexus", "aironet", "firepower"]
+      }
+    },
+    {
+      "name": "HPE",
+      "priority": 2,
+      "patterns": {
+        "keywords": ["hp", "hewlett", "hewlett packard", "hpe", "procurve", "3com"],
+        "productPrefixes": ["J9", "J8", "JL", "JG", "JC", "JD", "JE", "JF", "JH", "AF"],
+        "productContains": ["HPE", "HP-"],
+        "descriptionPatterns": ["procurve", "aruba", "proliant", "storageworks"]
+      }
+    },
+    {
+      "name": "Aruba",
+      "priority": 3,
+      "patterns": {
+        "keywords": ["aruba"],
+        "productPrefixes": ["AP-", "IAP-", "AOS-", "MC-", "MM-"],
+        "productContains": ["ARUBA"],
+        "descriptionPatterns": ["aruba", "mobility controller", "clearpass"]
+      }
+    },
+    {
+      "name": "Dell",
+      "priority": 4,
+      "patterns": {
+        "keywords": ["dell", "dell emc", "emc", "force10", "powerconnect"],
+        "productPrefixes": ["R6", "R7", "R8", "R9", "T6", "T7", "N1", "N2", "N3", "N4", "S4", "S5", "S6", "PC", "FN"],
+        "productContains": ["DELL", "PWR", "PERC"],
+        "descriptionPatterns": ["poweredge", "precision", "optiplex", "latitude", "vostro", "inspiron", "xps"]
+      }
+    },
+    {
+      "name": "Microsoft",
+      "priority": 5,
+      "patterns": {
+        "keywords": ["microsoft", "windows", "office", "azure", "surface"],
+        "productPrefixes": ["WIN-", "OFF-", "AZR-", "SQL-", "VS-", "MS-"],
+        "productContains": ["MSFT", "MICROSOFT"],
+        "descriptionPatterns": ["windows server", "sql server", "office 365", "azure", "visual studio", "sharepoint", "exchange"]
+      }
+    },
+    {
+      "name": "VMware",
+      "priority": 6,
+      "patterns": {
+        "keywords": ["vmware", "vsphere", "vcenter", "vsan", "nsx"],
+        "productPrefixes": ["VM-", "VCS-", "NSX-", "VR-", "WS-", "HOR-"],
+        "productContains": ["VMWARE", "VSPHERE"],
+        "descriptionPatterns": ["vsphere", "vcenter", "esx", "vsan", "horizon", "workspace one"]
+      }
+    },
+    {
+      "name": "Fortinet",
+      "priority": 7,
+      "patterns": {
+        "keywords": ["fortinet", "fortigate", "fortiwifi", "fortianalyzer", "fortimanager"],
+        "productPrefixes": ["FG-", "FWF-", "FAZ-", "FMG-", "FSW-", "FAP-", "FCT-"],
+        "productContains": ["FORTI"],
+        "descriptionPatterns": ["fortigate", "fortiwifi", "fortiswitch", "fortiap"]
+      }
+    },
+    {
+      "name": "Palo Alto Networks",
+      "priority": 8,
+      "patterns": {
+        "keywords": ["palo alto", "pan-os", "panorama", "prisma"],
+        "productPrefixes": ["PA-", "PAN-", "VM-", "CN-", "PRISMA-"],
+        "productContains": ["PALOALTO"],
+        "descriptionPatterns": ["pa-", "firewall", "panorama", "wildfire", "globalprotect"]
+      }
+    },
+    {
+      "name": "Juniper",
+      "priority": 9,
+      "patterns": {
+        "keywords": ["juniper", "junos", "netscreen"],
+        "productPrefixes": ["EX", "QFX", "MX", "SRX", "PTX", "ACX", "NFX", "SSG-", "ISG-"],
+        "productContains": ["JUNIPER"],
+        "descriptionPatterns": ["juniper", "ex series", "mx series", "srx series", "qfx"]
+      }
+    },
+    {
+      "name": "Check Point",
+      "priority": 10,
+      "patterns": {
+        "keywords": ["checkpoint", "check point", "gaia", "smartcenter"],
+        "productPrefixes": ["CP", "SG", "CPAP-", "CPSM-", "CPSG-"],
+        "productContains": ["CHECK-POINT", "CHECKPOINT"],
+        "descriptionPatterns": ["checkpoint", "smart-1", "security gateway", "threat prevention"]
+      }
+    },
+    {
+      "name": "F5 Networks",
+      "priority": 11,
+      "patterns": {
+        "keywords": ["f5", "big-ip", "bigip", "local traffic manager", "ltm"],
+        "productPrefixes": ["F5-", "BIG-", "VIP-", "LTM-", "GTM-", "ASM-", "APM-"],
+        "productContains": ["F5-BIG", "BIGIP"],
+        "descriptionPatterns": ["big-ip", "local traffic", "global traffic", "application security"]
+      }
+    },
+    {
+      "name": "Extreme Networks",
+      "priority": 12,
+      "patterns": {
+        "keywords": ["extreme", "extreme networks", "enterasys", "avaya networking"],
+        "productPrefixes": ["X4", "X6", "X8", "B5", "C5", "S4", "S8", "7100-", "VDX"],
+        "productContains": ["EXTREME"],
+        "descriptionPatterns": ["summit", "black diamond", "alpine", "extremexos"]
+      }
+    },
+    {
+      "name": "Brocade",
+      "priority": 13,
+      "patterns": {
+        "keywords": ["brocade", "foundry", "ruckus"],
+        "productPrefixes": ["ICX", "VDX", "MLX", "CER", "CES", "FCX", "TI", "SI", "NI", "BR-"],
+        "productContains": ["BROCADE"],
+        "descriptionPatterns": ["fastiron", "netiron", "serveriron", "turboiron"]
+      }
+    },
+    {
+      "name": "NetApp",
+      "priority": 14,
+      "patterns": {
+        "keywords": ["netapp", "ontap", "storagegrid"],
+        "productPrefixes": ["FAS", "AFF", "E-", "EF", "DS", "DE", "SG", "HCI"],
+        "productContains": ["NETAPP"],
+        "descriptionPatterns": ["fas", "all flash", "ontap", "storagegrid", "e-series"]
+      }
+    },
+    {
+      "name": "IBM",
+      "priority": 15,
+      "patterns": {
+        "keywords": ["ibm", "lenovo system x", "tivoli", "websphere", "db2"],
+        "productPrefixes": ["IBM-", "95", "87", "46", "25", "TS", "DS", "V3", "V5", "V7", "V9"],
+        "productContains": ["IBM"],
+        "descriptionPatterns": ["power", "system x", "storwize", "flashsystem", "spectrum"]
+      }
+    },
+    {
+      "name": "Lenovo",
+      "priority": 16,
+      "patterns": {
+        "keywords": ["lenovo", "thinkpad", "thinkcentre", "thinkserver", "thinksystem"],
+        "productPrefixes": ["SR", "ST", "SD", "SN", "RD", "TD", "TS", "20", "30"],
+        "productContains": ["LENOVO"],
+        "descriptionPatterns": ["thinkpad", "thinkcentre", "thinkserver", "thinksystem", "ideapad"]
+      }
+    },
+    {
+      "name": "Oracle",
+      "priority": 17,
+      "patterns": {
+        "keywords": ["oracle", "sun microsystems", "sparc", "solaris", "mysql"],
+        "productPrefixes": ["SPARC", "X4", "X5", "X6", "X7", "X8", "T4", "T5", "T7", "T8", "M8", "ZFS", "7"],
+        "productContains": ["ORACLE", "SUN"],
+        "descriptionPatterns": ["sparc", "exadata", "exalogic", "database appliance", "zfs storage"]
+      }
+    },
+    {
+      "name": "SonicWall",
+      "priority": 18,
+      "patterns": {
+        "keywords": ["sonicwall", "sonic wall", "sonicpoint"],
+        "productPrefixes": ["TZ", "NSA", "NSV", "SMA", "SRA", "ESA", "CSC", "SWS", "SOHO"],
+        "productContains": ["SONICWALL", "SONICW"],
+        "descriptionPatterns": ["sonicwall", "tz series", "nsa series", "sonicpoint"]
+      }
+    },
+    {
+      "name": "Sophos",
+      "priority": 19,
+      "patterns": {
+        "keywords": ["sophos", "cyberoam", "astaro"],
+        "productPrefixes": ["SG", "XG", "UTM", "AP", "RED", "SD-", "CS", "CR"],
+        "productContains": ["SOPHOS"],
+        "descriptionPatterns": ["sophos", "sg utm", "xg firewall", "intercept x", "central"]
+      }
+    },
+    {
+      "name": "Ubiquiti",
+      "priority": 20,
+      "patterns": {
+        "keywords": ["ubiquiti", "ubnt", "unifi", "edgemax", "airmax"],
+        "productPrefixes": ["UAP-", "USW-", "UDM-", "USG-", "UCK-", "ER-", "ES-", "EP-", "ETH-", "UVC-", "UVP-"],
+        "productContains": ["UBNT", "UBIQUITI", "UNIFI"],
+        "descriptionPatterns": ["unifi", "edgemax", "airmax", "dream machine", "edgerouter"]
+      }
+    },
+    {
+      "name": "Netgear",
+      "priority": 21,
+      "patterns": {
+        "keywords": ["netgear", "prosafe"],
+        "productPrefixes": ["GS", "XS", "M4", "M5", "M6", "M7", "JGS", "JFS", "WAC", "WAX", "WC", "R6", "R7", "R8", "R9"],
+        "productContains": ["NETGEAR"],
+        "descriptionPatterns": ["prosafe", "nighthawk", "orbi", "readynas"]
+      }
+    },
+    {
+      "name": "WatchGuard",
+      "priority": 22,
+      "patterns": {
+        "keywords": ["watchguard", "firebox", "xtm", "dimension"],
+        "productPrefixes": ["XTM", "M2", "M3", "M4", "M5", "T1", "T3", "T7", "FB", "WG"],
+        "productContains": ["WATCHGUARD"],
+        "descriptionPatterns": ["firebox", "xtm", "dimension", "authpoint"]
+      }
+    },
+    {
+      "name": "Barracuda",
+      "priority": 23,
+      "patterns": {
+        "keywords": ["barracuda"],
+        "productPrefixes": ["BNGF", "BNGC", "BWF", "BBS", "BMA", "BSF", "BAR", "BVS", "BCS"],
+        "productContains": ["BARRACUDA", "CUDA"],
+        "descriptionPatterns": ["barracuda", "cloudgen", "web application firewall", "email security"]
+      }
+    },
+    {
+      "name": "Riverbed",
+      "priority": 24,
+      "patterns": {
+        "keywords": ["riverbed", "steelhead"],
+        "productPrefixes": ["SH", "CX", "EX", "RV", "GX", "IC", "SC"],
+        "productContains": ["RIVERBED"],
+        "descriptionPatterns": ["steelhead", "steelcentral", "steelfusion"]
+      }
+    },
+    {
+      "name": "Citrix",
+      "priority": 25,
+      "patterns": {
+        "keywords": ["citrix", "netscaler", "xenserver", "xendesktop"],
+        "productPrefixes": ["NS", "MPX", "SDX", "VPX", "CTX", "XEN", "XD", "XA"],
+        "productContains": ["CITRIX", "NETSCALER"],
+        "descriptionPatterns": ["netscaler", "adc", "xenserver", "workspace", "sharefile"]
+      }
+    }
+  ],
+  "notes": {
+    "description": "Manufacturer identification patterns for Phase 2 processing",
+    "lastUpdated": "2024-12-26",
+    "instructions": [
+      "Patterns are checked in priority order (1 = highest)",
+      "First match wins",
+      "Keywords are case-insensitive partial matches",
+      "Product prefixes are case-insensitive starts-with matches",
+      "Product contains are case-insensitive substring matches",
+      "Add new manufacturers with appropriate priority"
+    ]
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "g_20ea8436-554a-4503-a4da-fda3e4a563d7": {
+    "customerName": "g",
+    "jobId": "20ea8436-554a-4503-a4da-fda3e4a563d7",
+    "filters": [
+      {
+        "id": "35f65348-24b4-4a0f-b666-6de79bcadbaf",
+        "name": "Filter-1",
+        "description": "",
+        "filters": {
+          "product_id": "",
+          "type": {
+            "include": [],
+            "exclude": []
+          },
+          "category": {
+            "include": [],
+            "exclude": []
+          },
+          "mfg": {
+            "include": [],
+            "exclude": []
+          },
+          "description": "",
+          "risk_level": {
+            "include": [],
+            "exclude": []
+          },
+          "support_status": {
+            "include": [],
+            "exclude": []
+          }
+        },
+        "settings": {
+          "is_default": false,
+          "is_shared": true
+        },
+        "createdAt": "2025-10-17T21:23:57.661Z",
+        "updatedAt": "2025-10-17T21:23:57.661Z",
+        "createdBy": "user",
+        "usageCount": 0,
+        "lastUsed": null
+      }
+    ],
+    "defaultFilterId": null,
+    "lastUpdated": "2025-10-17T21:23:57.661Z"
+  }
+}
