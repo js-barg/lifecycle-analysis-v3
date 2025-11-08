@@ -1,15 +1,14 @@
-# Add this options section at the TOP of your cloudbuild.yaml
 options:
   logging: CLOUD_LOGGING_ONLY
 
 steps:
   # Build the container image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/$PROJECT_ID/lifecycle-analysis:$COMMIT_SHA', '.']
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/lifecycle-analysis:latest', '.']
   
   # Push the image to Container Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/lifecycle-analysis:$COMMIT_SHA']
+    args: ['push', 'gcr.io/$PROJECT_ID/lifecycle-analysis:latest']
   
   # Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -19,7 +18,7 @@ steps:
       - 'deploy'
       - 'lifecycle-analysis'
       - '--image'
-      - 'gcr.io/$PROJECT_ID/lifecycle-analysis:$COMMIT_SHA'
+      - 'gcr.io/$PROJECT_ID/lifecycle-analysis:latest'
       - '--region'
       - 'us-central1'
       - '--platform'
@@ -30,6 +29,6 @@ steps:
       - '--add-cloudsql-instances'
       - 'lifecycle-analysis-477518:us-central1:lifecycle-db'
       - '--set-secrets'
-      - 'DATABASE_URL=database-url:latest'
+      - 'DATABASE_URL=database-url:latest,GOOGLE_CSE_API_KEY=google-cse-api:latest,GOOGLE_CSE_CX=google-cse-cx:latest'
 
 timeout: '1200s'
