@@ -1,11 +1,33 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
-require('dotenv').config({ path: 'C:/development/lifecycle-analysis/backend/.env' });
+
+// Only load dotenv in development
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();
+}
 
 class GoogleAIResearchService {
   constructor() {
-    this.apiKey = process.env.GOOGLE_API_KEY;
-    this.searchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID;
+    // Support both local and Cloud Run environment variable names
+    this.apiKey = process.env.GOOGLE_API_KEY || process.env.GOOGLE_CSE_API_KEY;
+    this.searchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID || process.env.GOOGLE_CSE_CX;
+    
+    // Debug logging to confirm configuration
+    console.log('🔧 Google AI Research Service initializing...');
+    console.log('API Key configured:', !!this.apiKey);
+    console.log('Search Engine ID configured:', !!this.searchEngineId);
+    
+    if (this.apiKey && this.searchEngineId) {
+      console.log('✅ Google Custom Search API configured successfully');
+      // Log first few characters of credentials for verification (safely)
+      console.log(`API Key starts with: ${this.apiKey?.substring(0, 10)}...`);
+      console.log(`Search Engine ID: ${this.searchEngineId}`);
+    } else {
+      console.log('❌ Missing API credentials:');
+      if (!this.apiKey) console.log('  - API Key not found');
+      if (!this.searchEngineId) console.log('  - Search Engine ID not found');
+    }
+    
     this.searchUrl = 'https://www.googleapis.com/customsearch/v1';
     this.authorizedDomains = {
       cisco: ['cisco.com', 'meraki.com', 'documentation.meraki.com', 'support.cisco.com'],
