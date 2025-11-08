@@ -16,6 +16,13 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
+# Copy data directory BEFORE building (so it's available)
+COPY data ./data
+
+# Build frontend
+COPY . .
+RUN npm run build
+
 # Copy backend source
 COPY backend/src ./backend/src
 
