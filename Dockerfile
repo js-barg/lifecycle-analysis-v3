@@ -10,7 +10,8 @@ RUN npm ci --only=production
 # Copy and install frontend dependencies
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+# Use npm install with platform flag instead of npm ci
+RUN npm install --platform=linux --omit=dev
 
 # Build frontend
 COPY . .
@@ -25,6 +26,6 @@ RUN cp -r dist/* backend/public/
 
 WORKDIR /app/backend
 
-# Run the backend server (which will serve the frontend too)
+# Run the backend server
 EXPOSE 8080
 CMD ["node", "src/server.js"]
