@@ -413,99 +413,136 @@ async performSearches(queries, product) {
   /**
    * Cisco-specific date extraction
    */
-extractCiscoLifecycleDates(searchResults, product) {
-  const dates = {
-    date_introduced: null,
-    end_of_sale_date: null,
-    end_of_sw_maintenance_date: null,
-    end_of_sw_vulnerability_maintenance_date: null,
-    last_day_of_support_date: null,
-    end_of_routine_failure_date: null,
-    end_of_new_service_date: null,
-    is_current_product: false
-  };
+  extractCiscoLifecycleDates(searchResults, product) {
+    const dates = {
+      date_introduced: null,
+      end_of_sale_date: null,
+      end_of_sw_maintenance_date: null,
+      end_of_sw_vulnerability_maintenance_date: null,
+      last_day_of_support_date: null,
+      end_of_routine_failure_date: null,
+      end_of_new_service_date: null,
+      is_current_product: false
+    };
 
-  console.log(`\n🔍 DEBUG: Looking for ${product.product_id} dates`);
-  console.log(`📊 Found ${searchResults.pages.length} relevant pages`);
+    console.log(`\n🔍 DEBUG: Looking for ${product.product_id} dates`);
+    console.log(`📊 Found ${searchResults.pages.length} relevant pages`);
 
-  // Process each page with Cisco-specific extraction
-  for (const page of searchResults.pages) {
-    try {
-      const pageContent = page.content;
-      const allDates = this.extractAllCiscoDates(pageContent);
-      
-      console.log(`📊 Found ${allDates.length} dates in page`);
-      
-      // For Cisco EOL pages, dates typically appear in order:
-      // 1. End-of-Sale: First occurrence (usually 2024-04-30)
-      // 2. End of SW Maintenance: ~1 year after EOS (2025-04-30)
-      // 3. End of Routine Failure: ~5 years after EOS (2029-04-30)
-      // 4. Last Day of Support: ~5 years after EOS (2029-04-30)
-      
-      // Sort dates chronologically
-      const sortedDates = allDates.map(d => d.date).sort();
-      const uniqueDates = [...new Set(sortedDates)];
-      
-      console.log(`📅 Unique dates found: ${uniqueDates.join(', ')}`);
-      
-      // Typical pattern for Cisco:
-      // Earliest date = End of Sale
-      // Latest date = Last Day of Support
-      // Middle dates = SW maintenance
-      
-      if (uniqueDates.length > 0) {
-        // Assign based on typical Cisco patterns
-        if (!dates.end_of_sale_date) {
-          dates.end_of_sale_date = uniqueDates[0]; // First date is usually EOS
-          console.log(`📅 Set End-of-Sale: ${dates.end_of_sale_date}`);
-        }
+    // Collect ALL dates from all pages first
+    const allExtractedDates = [];
+    
+    for (const page of searchResults.pages) {
+      try {
+        // Extract dates using multiple methods
+        const tableDates = this.extractDatesFromTables(page.content, product.product_id);
+        const proximityDates = this.extractDatesWithProximity(page.content, product.product_id);
+        const structuredDates = this.extractStructuredEOLDates(page.content, product.product_id);
+        const listDates = this.extractDatesFromLists(page.content, product.product_id);
         
-        if (uniqueDates.length > 1 && !dates.last_day_of_support_date) {
-          dates.last_day_of_support_date = uniqueDates[uniqueDates.length - 1]; // Last date is usually LDOS
-          console.log(`📅 Set Last-Day-of-Support: ${dates.last_day_of_support_date}`);
-        }
+        // Collect all unique dates found
+        const pageDates = this.extractAllCiscoDates(page.content);
+        pageDates.forEach(dateObj => {
+          allExtractedDates.push(dateObj.date);
+        });
+      } catch (error) {
+        console.error(`Error extracting from ${page.url}:`, error.message);
+      }
+    }
+
+    // Get unique dates and sort them chronologically
+    const uniqueDates = [...new Set(allExtractedDates)].sort();
+    
+    console.log(`📅 Unique dates found: ${uniqueDates.join(', ')}`);
+    
+    if (uniqueDates.length === 0) {
+      return dates;
+    }
+
+    // SMART DATE ASSIGNMENT BASED ON CISCO PATTERNS
+    // Cisco typically follows this pattern:
+    // 1. Earliest date = End of Sale (2024-04-30)
+    // 2. +1 year = SW Maintenance (2025-04-30)
+    // 3. +3-4 years = SW Vulnerability (2027-04-30)
+    // 4. +5 years = Last Day of Support (2029-04-30)
+    
+    if (uniqueDates.length === 1) {
+      // Only one date - assume it's EOS
+      dates.end_of_sale_date = uniqueDates[0];
+    } else if (uniqueDates.length === 2) {
+      // Two dates - likely EOS and LDOS
+      dates.end_of_sale_date = uniqueDates[0];
+      dates.last_day_of_support_date = uniqueDates[1];
+    } else {
+      // Multiple dates - assign based on typical Cisco timeline
+      dates.end_of_sale_date = uniqueDates[0]; // Earliest
+      dates.last_day_of_support_date = uniqueDates[uniqueDates.length - 1]; // Latest
+      
+      // Look for SW maintenance (typically 1 year after EOS)
+      const eosDate = new Date(dates.end_of_sale_date);
+      const eosYear = eosDate.getFullYear();
+      
+      for (const date of uniqueDates) {
+        const dateObj = new Date(date);
+        const dateYear = dateObj.getFullYear();
         
-        // Look for SW maintenance (usually 1 year after EOS)
-        if (dates.end_of_sale_date && uniqueDates.length > 2) {
-          const eosYear = new Date(dates.end_of_sale_date).getFullYear();
-          for (const date of uniqueDates) {
-            const dateYear = new Date(date).getFullYear();
-            if (dateYear === eosYear + 1 && !dates.end_of_sw_maintenance_date) {
-              dates.end_of_sw_maintenance_date = date;
-              console.log(`📅 Set SW-Maintenance: ${date}`);
-              break;
-            }
-          }
+        // SW Maintenance is typically 1 year after EOS
+        if (!dates.end_of_sw_maintenance_date && dateYear === eosYear + 1) {
+          dates.end_of_sw_maintenance_date = date;
         }
-        
-        // Set routine failure (same as LDOS for most Cisco products)
-        if (dates.last_day_of_support_date && !dates.end_of_routine_failure_date) {
-          dates.end_of_routine_failure_date = dates.last_day_of_support_date;
+        // SW Vulnerability is typically 3-4 years after EOS
+        else if (!dates.end_of_sw_vulnerability_maintenance_date && 
+                (dateYear === eosYear + 3 || dateYear === eosYear + 4)) {
+          dates.end_of_sw_vulnerability_maintenance_date = date;
+        }
+        // Routine failure is typically same as LDOS
+        else if (!dates.end_of_routine_failure_date && date === dates.last_day_of_support_date) {
+          dates.end_of_routine_failure_date = date;
         }
       }
-      
-    } catch (error) {
-      console.error(`Error extracting from ${page.url}:`, error.message);
     }
-  }
 
-  // Apply Cisco-specific logic if dates are missing
-  if (dates.end_of_sale_date && !dates.end_of_sw_maintenance_date) {
-    const eosDate = new Date(dates.end_of_sale_date);
-    const swDate = new Date(eosDate);
-    swDate.setFullYear(swDate.getFullYear() + 1);
-    dates.end_of_sw_maintenance_date = swDate.toISOString().split('T')[0];
-    console.log(`📊 Estimated SW Maintenance as 1 year after EOS`);
-  }
-  
-  // SW Vulnerability = LDOS for Cisco
-  if (dates.last_day_of_support_date && !dates.end_of_sw_vulnerability_maintenance_date) {
-    dates.end_of_sw_vulnerability_maintenance_date = dates.last_day_of_support_date;
-    console.log(`📊 Set SW Vulnerability = LDOS`);
-  }
+    // Fill in any missing dates based on Cisco patterns
+    if (dates.end_of_sale_date) {
+      const eosDate = new Date(dates.end_of_sale_date);
+      
+      if (!dates.end_of_sw_maintenance_date) {
+        const swDate = new Date(eosDate);
+        swDate.setFullYear(swDate.getFullYear() + 1);
+        dates.end_of_sw_maintenance_date = swDate.toISOString().split('T')[0];
+      }
+      
+      if (!dates.end_of_sw_vulnerability_maintenance_date) {
+        const vulnDate = new Date(eosDate);
+        vulnDate.setFullYear(vulnDate.getFullYear() + 3);
+        dates.end_of_sw_vulnerability_maintenance_date = vulnDate.toISOString().split('T')[0];
+      }
+      
+      if (!dates.last_day_of_support_date) {
+        const ldosDate = new Date(eosDate);
+        ldosDate.setFullYear(ldosDate.getFullYear() + 5);
+        dates.last_day_of_support_date = ldosDate.toISOString().split('T')[0];
+      }
+      
+      if (!dates.end_of_routine_failure_date && dates.last_day_of_support_date) {
+        dates.end_of_routine_failure_date = dates.last_day_of_support_date;
+      }
+    }
 
-  return dates;
-}
+    // Set current product status
+    if (dates.end_of_sale_date) {
+      const today = new Date();
+      const eosDate = new Date(dates.end_of_sale_date);
+      dates.is_current_product = eosDate > today;
+    }
+
+    console.log(`✅ Final dates assigned:`);
+    console.log(`  EOS: ${dates.end_of_sale_date}`);
+    console.log(`  SW Maint: ${dates.end_of_sw_maintenance_date}`);
+    console.log(`  SW Vuln: ${dates.end_of_sw_vulnerability_maintenance_date}`);
+    console.log(`  LDOS: ${dates.last_day_of_support_date}`);
+
+    return dates;
+  }
 
   /**
    * Extract dates from HTML tables (common in Cisco EOL notices)
