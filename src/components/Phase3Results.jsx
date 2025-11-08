@@ -348,6 +348,12 @@ const Phase3Results = ({ phase2JobId, isActive, customerName, onComplete, onRese
             onResearchComplete();
           }
           
+          // ADD THIS: Scroll to top when complete
+          window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+          });
+
           // Fetch final results
           setTimeout(() => {
             fetchResults();
