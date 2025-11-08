@@ -151,124 +151,46 @@ class GoogleAIResearchService {
   /**
    * Enhanced Search Query Builder with improved Cisco support
    */
-  buildEnhancedSearchQueries(product) {
-    const productId = product.product_id;
-    const manufacturer = (product.manufacturer || '').toLowerCase();
-    const queries = [];
-    
-    // Check if it's a Cisco product
-    const isCisco = manufacturer.includes('cisco') || 
-                    productId.match(/^(WS-|N\d+K-|ISR|ASR|C\d+|AIR-|MR|MS|MX|MV|MT|MG)/i);
-    
-    // 1. EXACT MATCH QUERIES - Use quotes for precise matching
-    queries.push(`${productId} "End-of-Sale" "End-of-Life"`);
-    queries.push(`${productId} "End of Sale" "End of Support"`);
-    queries.push(`${productId} "Last Date of Support"`);
-    queries.push(`${productId} EOL EOS dates`);
-    
-    // 2. VENDOR-SPECIFIC SITE TARGETING
-    if (isCisco) {
-      // Enhanced Cisco-specific queries
-      queries.push(`"${productId}" site:cisco.com/c/en/us/products/eos-eol-notice-listing.html`);
-      queries.push(`"${productId}" site:cisco.com/c/en/us/products/collateral/ "End-of-Sale"`);
-      queries.push(`"${productId}" "Cisco announces" "End-of-Sale"`);
-      queries.push(`"${productId}" inurl:eos-eol-notice site:cisco.com`);
-      queries.push(`"${productId}" filetype:pdf "End-of-Life Announcement" site:cisco.com`);
-      queries.push(`"${productId}" site:cisco.com EOL`);
-      queries.push(`"${productId}" "End-of-Sale" site:cisco.com/c/en/us/products/`);
-      queries.push(`"${productId}" "lifecycle milestones" site:cisco.com`);
-      queries.push(`"${productId}" site:cisco.com/c/en/us/products/collateral/`);
-      queries.push(`"${productId}" "Product Bulletin" "PB" site:cisco.com`);
-      queries.push(`"${productId}" "Field Notice" "FN" site:cisco.com`);
-      
-      // Product line specific queries
-      if (productId.match(/^WS-C/i)) {
-        queries.push(`"${productId}" site:cisco.com/c/en/us/products/switches/`);
+buildEnhancedSearchQueries(product) {
+  const productId = product.product_id;
+  const manufacturer = (product.manufacturer || '').toLowerCase();
+  const queries = [];
+  
+  // Check if it's a Cisco/Meraki product
+  const isCisco = manufacturer.includes('cisco') || 
+                  productId.match(/^(WS-|N\d+K-|ISR|ASR|C\d+|AIR-|MR|MS|MX|MV|MT|MG)/i);
+  
+  if (isCisco) {
+    // PRIORITY 1: Most likely to have results (only 3-5 queries)
+    if (productId.match(/^(MR|MS|MX|MV|MT|MG)\d+/i)) {
+      // Meraki products - documentation.meraki.com is THE source
+      queries.push(`${productId} site:documentation.meraki.com`);
+      const baseProduct = productId.replace(/-HW$/i, '');
+      if (baseProduct !== productId) {
+        queries.push(`${baseProduct} site:documentation.meraki.com`);
       }
-      if (productId.match(/^N[0-9]+K-/i)) {
-        queries.push(`"${productId}" site:cisco.com/c/en/us/products/switches/ "Nexus"`);
-      }
-      if (productId.match(/^ISR/i)) {
-        queries.push(`"${productId}" site:cisco.com/c/en/us/products/routers/ "ISR"`);
-      }
-      if (productId.match(/^ASR/i)) {
-        queries.push(`"${productId}" site:cisco.com/c/en/us/products/routers/ "ASR"`);
-      }
-      if (productId.match(/^AIR-/i)) {
-        queries.push(`"${productId}" site:cisco.com/c/en/us/products/wireless/ "Aironet"`);
-      }
-      
-      // Check if it's a Meraki product
-      if (productId.match(/^(MR|MS|MX|MV|MT|MG)\d+/i)) {
-        queries.push(`"${productId}" site:documentation.meraki.com`);
-        queries.push(`"${productId}" "End-of-Support" site:documentation.meraki.com`);
-        
-        // Also try without -HW suffix for Meraki
-        const baseProduct = productId.replace(/-HW$/i, '');
-        if (baseProduct !== productId) {
-          queries.push(`"${baseProduct}" site:documentation.meraki.com EOL`);
-          queries.push(`"${baseProduct}" "End-of-Sale" site:documentation.meraki.com`);
-        }
-      }
-    }
-    
-    if (manufacturer.includes('hp') || manufacturer.includes('hpe') || manufacturer.includes('aruba')) {
-      queries.push(`"${productId}" site:hpe.com EOL`);
-      queries.push(`"${productId}" site:h20195.www2.hpe.com`);
-      queries.push(`"${productId}" "QuickSpecs" site:hpe.com`);
-      queries.push(`"${productId}" site:support.hpe.com lifecycle`);
-      
-      // Aruba specific
-      if (productId.match(/^(AP-|IAP-|RAP-)/i) || manufacturer.includes('aruba')) {
-        queries.push(`"${productId}" site:arubanetworks.com EOL`);
-      }
-    }
-    
-    if (manufacturer.includes('dell') || manufacturer.includes('emc')) {
-      queries.push(`"${productId}" site:dell.com "End of Life"`);
-      queries.push(`"${productId}" site:dell.com/support`);
-      queries.push(`"${productId}" site:delltechnologies.com lifecycle`);
-    }
-    
-    if (manufacturer.includes('juniper')) {
-      queries.push(`"${productId}" site:juniper.net EOL`);
-      queries.push(`"${productId}" site:support.juniper.net "End of Life"`);
-      queries.push(`"${productId}" site:kb.juniper.net lifecycle`);
-    }
-    
-    if (manufacturer.includes('fortinet') || productId.match(/^FG-/i)) {
-      queries.push(`"${productId}" site:fortinet.com "End of Support"`);
-      queries.push(`"${productId}" site:docs.fortinet.com lifecycle`);
-    }
-    
-    if (manufacturer.includes('palo alto') || productId.match(/^PA-/i)) {
-      queries.push(`"${productId}" site:paloaltonetworks.com EOL`);
-      queries.push(`"${productId}" site:docs.paloaltonetworks.com "End-of-Life"`);
-    }
-    
-    // 3. PRODUCT VARIANT SEARCHES - Try common variations
-    const variations = this.generateProductVariations(productId);
-    for (const variant of variations) {
-      if (variant !== productId) {
-        queries.push(`"${variant}" "End-of-Sale" "${manufacturer}"`);
-      }
-    }
-    
-    // 4. manufacturer-constrained search:
-    if (manufacturer) {
-      queries.push(`"${productId}" "${manufacturer}" "End of Life" official site`);
     } else {
-      queries.push(`"${productId}" "End of Life" manufacturer official`);
+      // Regular Cisco products
+      queries.push(`${productId} site:cisco.com EOL`);
+      queries.push(`${productId} site:cisco.com/c/en/us/products/eos-eol-notice-listing.html`);
     }
     
-    // 5. BULLETIN AND ANNOUNCEMENT SEARCHES
-    queries.push(`"${productId}" "Field Notice" "End of"`);
-    queries.push(`"${productId}" "Product Bulletin" EOL`);
-    queries.push(`"${productId}" "announcement" "discontinue"`);
+    // PRIORITY 2: Generic search (1 query)
+    queries.push(`${productId} "End-of-Sale" "End-of-Life"`);
+  } else {
+    // Non-Cisco products - keep it simple (3-5 queries max)
+    queries.push(`${productId} EOL EOS`);
+    queries.push(`${productId} "End-of-Sale" "End-of-Life"`);
     
-    console.log(`📝 Generated ${queries.length} search queries for ${productId}`);
-    return queries;
+    // Vendor-specific if known
+    if (manufacturer) {
+      queries.push(`${productId} site:${manufacturer}.com EOL`);
+    }
   }
+  
+  console.log(`📝 Generated ${queries.length} search queries for ${productId}`);
+  return queries;
+}
 
   generateProductVariations(productId) {
     const variations = [productId];
@@ -289,82 +211,113 @@ class GoogleAIResearchService {
     return variations;
   }
 
-  async performSearches(queries, product) {
-    const results = {
-      pages: [],
-      sources: {
-        vendor_site: 0,
-        third_party: 0,
-        manual_entry: 0
-      }
-    };
-    
-    // Check if API credentials are configured
-    if (!this.apiKey || this.apiKey === 'your_google_api_key_here' || 
-        !this.searchEngineId || this.searchEngineId === 'your_search_engine_id_here') {
-      console.log('⚠️ Google API not configured properly');
-      return results;
+async performSearches(queries, product) {
+  const results = {
+    pages: [],
+    sources: {
+      vendor_site: 0,
+      third_party: 0,
+      manual_entry: 0
+    }
+  };
+  
+  // Check if API credentials are configured
+  if (!this.apiKey || this.apiKey === 'your_google_api_key_here' || 
+      !this.searchEngineId || this.searchEngineId === 'your_search_engine_id_here') {
+    console.log('⚠️ Google API not configured properly');
+    return results;
+  }
+  
+  // Performance optimization: Track if we found dates
+  let foundEndOfSale = false;
+  let foundEndOfSupport = false;
+  let queryCount = 0;
+  const maxQueries = 10; // Limit queries for performance
+  
+  for (const query of queries) {
+    // PERFORMANCE: Stop early if we found both key dates or hit query limit
+    if ((foundEndOfSale && foundEndOfSupport) || queryCount >= maxQueries) {
+      console.log(`✅ Found sufficient data or hit query limit, stopping search`);
+      break;
     }
     
-    for (const query of queries) {
-      try {
-        // Rate limiting
-        await this.enforceRateLimit();
-        
-        console.log(`🔎 Searching: ${query}`);
-        
-        const response = await axios.get(this.searchUrl, {
-          params: {
-            key: this.apiKey,
-            cx: this.searchEngineId,
-            q: query,
-            num: 5 // Get top 5 results
-          },
-          timeout: 10000
-        });
-        
-        if (response.data.items) {
-          for (const item of response.data.items) {
-            // SECURITY CHECK: Skip unauthorized domains
-            if (!this.isAuthorizedDomain(item.link)) {
-              console.log(`⚠️ Skipping unauthorized domain: ${new URL(item.link).hostname}`);
-              results.sources.third_party++; // Count as third-party
-              continue; // Skip this result
+    try {
+      // Rate limiting
+      await this.enforceRateLimit();
+      
+      console.log(`🔎 Searching: ${query}`); // FIXED: Added parentheses
+      queryCount++;
+      
+      const response = await axios.get(this.searchUrl, {
+        params: {
+          key: this.apiKey,
+          cx: this.searchEngineId,
+          q: query,
+          num: 3 // PERFORMANCE: Reduced from 5 to 3 results
+        },
+        timeout: 10000
+      });
+      
+      if (response.data.items) {
+        for (const item of response.data.items) {
+          // SECURITY CHECK: Skip unauthorized domains
+          if (!this.isAuthorizedDomain(item.link)) {
+            console.log(`⚠️ Skipping unauthorized domain: ${new URL(item.link).hostname}`); // FIXED: Added parentheses
+            results.sources.third_party++; // Count as third-party
+            continue; // Skip this result
+          }
+          
+          // Fetch and analyze page content
+          const pageContent = await this.fetchPageContent(item.link);
+          if (pageContent && this.verifyProductOnPage(pageContent, product.product_id)) {
+            results.pages.push({
+              url: item.link,
+              title: item.title,
+              content: pageContent,
+              snippet: item.snippet
+            });
+            
+            // Track source type
+            if (this.isVendorSite(item.link, product.manufacturer)) {
+              results.sources.vendor_site++;
+            } else {
+              results.sources.third_party++;
             }
-            // Fetch and analyze page content
-            const pageContent = await this.fetchPageContent(item.link);
-            if (pageContent && this.verifyProductOnPage(pageContent, product.product_id)) {
-              results.pages.push({
-                url: item.link,
-                title: item.title,
-                content: pageContent,
-                snippet: item.snippet
-              });
-              
-              // Track source type
-              if (this.isVendorSite(item.link, product.manufacturer)) {
-                results.sources.vendor_site++;
-              } else {
-                results.sources.third_party++;
-              }
-              
-              console.log(`✅ Found relevant page: ${item.link}`);
+            
+            console.log(`✅ Found relevant page: ${item.link}`); // FIXED: Added parentheses
+            
+            // PERFORMANCE: Check if this page contains key dates
+            const contentLower = pageContent.toLowerCase();
+            if (contentLower.includes('end-of-sale') || contentLower.includes('end of sale')) {
+              foundEndOfSale = true;
+            }
+            if (contentLower.includes('end-of-life') || contentLower.includes('end of life') || 
+                contentLower.includes('end-of-support') || contentLower.includes('end of support')) {
+              foundEndOfSupport = true;
+            }
+            
+            // PERFORMANCE: Stop processing more results if we have enough pages
+            if (results.pages.length >= 3 && (foundEndOfSale || foundEndOfSupport)) {
+              console.log(`📊 Found ${results.pages.length} pages with dates, moving to next query`);
+              break;
             }
           }
         }
-        
-      } catch (error) {
-        if (error.response?.status === 429) {
-          console.log('⏳ Rate limit hit, waiting before retry...');
-          await this.handleRateLimit(error);
-        } else {
-          console.error(`Search error for query "${query}":`, error.message);
-        }
+      }
+      
+    } catch (error) {
+      if (error.response?.status === 429) {
+        console.log('⏳ Rate limit hit, waiting before retry...');
+        await this.handleRateLimit(error);
+      } else {
+        console.error(`Search error for query "${query}":`, error.message); // FIXED: Added parentheses
       }
     }
-    
-    return results;
   }
+  
+  console.log(`📊 Search complete: ${results.pages.length} relevant pages found from ${queryCount} queries`);
+  return results;
+}
 
   async fetchPageContent(url) {
     try {
