@@ -511,52 +511,87 @@ extractCiscoLifecycleDates(searchResults, product) {
    * Extract dates from HTML tables (common in Cisco EOL notices)
    */
   extractDatesFromTables(content, productId) {
-    const dates = {};
-    
-    // Look for table patterns
-    const tablePatterns = [
-      /<tr[^>]*>[\s\S]*?<\/tr>/gi,
-      /<td[^>]*>[\s\S]*?<\/td>/gi,
-      /\|([^|]+)\|([^|]+)\|/g,
-      /([^\t]+)\t([^\t]+)/g
-    ];
+  const dates = {};
+  
+  // Look for table patterns
+  const tablePatterns = [
+    /<tr[^>]*>[\s\S]*?<\/tr>/gi,
+    /<td[^>]*>[\s\S]*?<\/td>/gi,
+    /\|([^|]+)\|([^|]+)\|/g,
+    /([^\t]+)\t([^\t]+)/g
+  ];
 
-    for (const pattern of tablePatterns) {
-      const matches = content.matchAll(pattern);
-      for (const match of matches) {
-        const row = match[0];
+  for (const pattern of tablePatterns) {
+    const matches = content.matchAll(pattern);
+    for (const match of matches) {
+      const row = match[0];
+      
+      // Check if this row contains the product ID
+      if (row.toLowerCase().includes(productId.toLowerCase())) {
+        // Extract all dates from this row
+        const rowDates = this.extractAllCiscoDates(row);
         
-        // Check if this row contains the product ID
-        if (row.toLowerCase().includes(productId.toLowerCase())) {
-          // Extract all dates from this row
-          const rowDates = this.extractAllCiscoDates(row);
-          
-          // Try to identify what each date represents
-          for (const dateObj of rowDates) {
-            const milestone = this.identifyMilestone(row, dateObj.position);
-            if (milestone) {
-              dates[milestone] = dateObj.date;
-              console.log(`📅 Extracted ${milestone}: ${dateObj.date} from table`);
-            }
+        // Try to identify what each date represents
+        for (const dateObj of rowDates) {
+          const milestone = this.identifyMilestone(row, dateObj.position);
+          if (milestone && !dates[milestone]) {  // Don't overwrite existing dates
+            dates[milestone] = dateObj.date;
+            console.log(`📅 Extracted ${milestone}: ${dateObj.date} from table`);
           }
         }
-        
-        // Also check milestone rows
-        for (const [field, keywords] of Object.entries(this.eolMilestones)) {
-          for (const keyword of keywords) {
-            if (row.includes(keyword)) {
+      }
+      
+      // Also check milestone rows
+      for (const [field, keywords] of Object.entries(this.eolMilestones)) {
+        for (const keyword of keywords) {
+          if (row.includes(keyword)) {
+            // Only process if we haven't found this date yet
+            if (!dates[field + '_date']) {
               const rowDates = this.extractAllCiscoDates(row);
+              
               if (rowDates.length > 0) {
-                dates[field + '_date'] = rowDates[0].date;
+                // Find the date that comes AFTER the keyword, not just the first date
+                const keywordIndex = row.indexOf(keyword);
+                let bestDate = null;
+                let closestDistance = Infinity;
+                
+                for (const dateObj of rowDates) {
+                  // Prefer dates that come after the keyword
+                  if (dateObj.position > keywordIndex) {
+                    const distance = dateObj.position - keywordIndex;
+                    if (distance < closestDistance) {
+                      closestDistance = distance;
+                      bestDate = dateObj.date;
+                    }
+                  }
+                }
+                
+                // If no date after keyword, use the closest date
+                if (!bestDate && rowDates.length > 0) {
+                  for (const dateObj of rowDates) {
+                    const distance = Math.abs(dateObj.position - keywordIndex);
+                    if (distance < closestDistance) {
+                      closestDistance = distance;
+                      bestDate = dateObj.date;
+                    }
+                  }
+                }
+                
+                if (bestDate) {
+                  dates[field + '_date'] = bestDate;
+                  console.log(`📅 Extracted ${field}_date: ${bestDate} from table (keyword: ${keyword})`);
+                }
               }
             }
+            break; // Found this milestone, no need to check other keywords
           }
         }
       }
     }
-
-    return dates;
   }
+
+  return dates;
+}
 
   /**
    * Extract dates near product mentions
