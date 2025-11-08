@@ -9,7 +9,7 @@ import JobProgress from './JobProgress';
 import DataSourcesModal from './DataSourcesModal';
 import "../styles/phase3.css";
 
-const API_BASE_URL = 'http://localhost:3001';
+const API_BASE_URL = '';
 
 const Phase3Results = ({ phase2JobId, isActive, customerName, onComplete, onResearchComplete, onPhase3Initialize }) => {
   // ============= EXISTING STATE MANAGEMENT =============
