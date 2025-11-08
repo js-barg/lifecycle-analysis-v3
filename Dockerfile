@@ -2,29 +2,24 @@ FROM node:20
 
 WORKDIR /app
 
+# Install Python and build tools for native dependencies
+RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
+
 # Copy and install backend dependencies
 COPY backend/package*.json ./backend/
 WORKDIR /app/backend
 RUN npm ci --only=production
 
-# Copy and install frontend dependencies
+# Copy frontend package files and install ALL dependencies (including dev for build)
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+RUN npm install --platform=linux
 
-# Build frontend
+# Copy all source files (includes data directory)
 COPY . .
+
+# Build frontend (only once)
 RUN npm run build
-
-# Copy data directory BEFORE building (so it's available)
-COPY data ./data
-
-# Build frontend
-COPY . .
-RUN npm run build
-
-# Copy backend source
-COPY backend/src ./backend/src
 
 # Copy frontend build to backend public folder
 RUN mkdir -p backend/public
@@ -32,6 +27,5 @@ RUN cp -r dist/* backend/public/
 
 WORKDIR /app/backend
 
-# Run the backend server (which will serve the frontend too)
 EXPOSE 8080
 CMD ["node", "src/server.js"]
