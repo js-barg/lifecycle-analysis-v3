@@ -24,7 +24,7 @@ import {
 
 const Phase2Results = ({ phase1JobId, isActive, onComplete }) => {
   // Base URL for backend API - Backend is running on port 3001
-  const API_BASE_URL = 'http://localhost:3001';
+  const API_BASE_URL = '';
   
   const [phase2Data, setPhase2Data] = useState(null);
   const [filteredItems, setFilteredItems] = useState([]);
