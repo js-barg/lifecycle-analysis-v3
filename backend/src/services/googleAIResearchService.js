@@ -161,10 +161,10 @@ class GoogleAIResearchService {
                     productId.match(/^(WS-|N\d+K-|ISR|ASR|C\d+|AIR-|MR|MS|MX|MV|MT|MG)/i);
     
     // 1. EXACT MATCH QUERIES - Use quotes for precise matching
-    queries.push(`"${productId}" "End-of-Sale" "End-of-Life"`);
-    queries.push(`"${productId}" "End of Sale" "End of Support"`);
-    queries.push(`"${productId}" "Last Date of Support"`);
-    queries.push(`"${productId}" EOL EOS dates`);
+    queries.push(`${productId} "End-of-Sale" "End-of-Life"`);
+    queries.push(`${productId} "End of Sale" "End of Support"`);
+    queries.push(`${productId} "Last Date of Support"`);
+    queries.push(`${productId} EOL EOS dates`);
     
     // 2. VENDOR-SPECIFIC SITE TARGETING
     if (isCisco) {
