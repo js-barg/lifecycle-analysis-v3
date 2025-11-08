@@ -10,15 +10,18 @@ COPY backend/package*.json ./backend/
 WORKDIR /app/backend
 RUN npm ci --only=production
 
-# Copy frontend package files and install ALL dependencies (including dev for build)
+# Copy frontend package files
 WORKDIR /app
 COPY package*.json ./
-RUN npm install --platform=linux
 
-# Copy all source files (includes data directory)
+# Remove any Windows-specific packages and install everything including devDependencies
+RUN sed -i '/@rollup\/rollup-win32/d' package.json && \
+    npm install --include=dev --platform=linux
+
+# Copy all source files
 COPY . .
 
-# Build frontend (only once)
+# Build frontend
 RUN npm run build
 
 # Copy frontend build to backend public folder
