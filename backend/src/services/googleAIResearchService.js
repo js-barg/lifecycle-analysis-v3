@@ -1011,27 +1011,41 @@ applyDateLogic(dates, product) {
     dates.last_day_of_support_date = dates.last_day_support_date;
   }
   
-  // Apply business logic for date relationships
+  // Count how many dates we actually found from research
+  const foundDates = [
+    dates.end_of_sale_date,
+    dates.last_day_of_support_date,
+    dates.end_of_sw_maintenance_date,
+    dates.end_routine_failure_date,
+    dates.end_new_service_date
+  ].filter(d => d !== null).length;
   
-  // If we have EOS but no LDOS, estimate LDOS as 5 years after EOS
-  if (dates.end_of_sale_date && !dates.last_day_of_support_date) {
-    const eosDate = new Date(dates.end_of_sale_date);
-    const ldosDate = new Date(eosDate);
-    ldosDate.setFullYear(ldosDate.getFullYear() + 5);
-    dates.last_day_of_support_date = ldosDate.toISOString().split('T')[0];
-    console.log(`📊 Estimated LDOS as 5 years after EOS`);
+  console.log(`📊 Found ${foundDates} dates from research for ${product.product_id}`);
+  
+  // ONLY estimate if we found 0 or 1 dates (not when we found multiple)
+  if (foundDates <= 1) {
+    // If we have EOS but no LDOS, estimate LDOS as 5 years after EOS
+    if (dates.end_of_sale_date && !dates.last_day_of_support_date) {
+      const eosDate = new Date(dates.end_of_sale_date);
+      const ldosDate = new Date(eosDate);
+      ldosDate.setFullYear(ldosDate.getFullYear() + 5);
+      dates.last_day_of_support_date = ldosDate.toISOString().split('T')[0];
+      console.log(`📊 Estimated LDOS as 5 years after EOS`);
+    }
+    
+    // If we have LDOS but no EOS, estimate EOS as 5 years before LDOS
+    if (dates.last_day_of_support_date && !dates.end_of_sale_date) {
+      const ldosDate = new Date(dates.last_day_of_support_date);
+      const eosDate = new Date(ldosDate);
+      eosDate.setFullYear(eosDate.getFullYear() - 5);
+      dates.end_of_sale_date = eosDate.toISOString().split('T')[0];
+      console.log(`📊 Estimated EOS as 5 years before LDOS`);
+    }
+  } else {
+    console.log(`✅ Using ${foundDates} dates found from research, skipping estimation`);
   }
   
-  // If we have LDOS but no EOS, estimate EOS as 5 years before LDOS
-  if (dates.last_day_of_support_date && !dates.end_of_sale_date) {
-    const ldosDate = new Date(dates.last_day_of_support_date);
-    const eosDate = new Date(ldosDate);
-    eosDate.setFullYear(eosDate.getFullYear() - 5);
-    dates.end_of_sale_date = eosDate.toISOString().split('T')[0];
-    console.log(`📊 Estimated EOS as 5 years before LDOS`);
-  }
-  
-  // Software maintenance typically ends 1 year after EOS for Cisco
+  // Software maintenance typically ends 1 year after EOS for Cisco (always apply this)
   const manufacturer = (product.manufacturer || '').toLowerCase();
   if (manufacturer.includes('cisco') && dates.end_of_sale_date && !dates.end_of_sw_maintenance_date) {
     const eosDate = new Date(dates.end_of_sale_date);
@@ -1040,7 +1054,7 @@ applyDateLogic(dates, product) {
     dates.end_of_sw_maintenance_date = swDate.toISOString().split('T')[0];
   }
   
-  // Set is_current_product based on dates
+  // Set is_current_product based on dates (always apply this)
   if (dates.end_of_sale_date) {
     const eosDate = new Date(dates.end_of_sale_date);
     const today = new Date();
