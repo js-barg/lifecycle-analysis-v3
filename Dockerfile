@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:20
 
 WORKDIR /app
 
@@ -10,8 +10,14 @@ RUN npm ci --only=production
 # Copy and install frontend dependencies
 WORKDIR /app
 COPY package*.json ./
-# Use npm install with platform flag instead of npm ci
-RUN npm install --platform=linux --omit=dev
+RUN npm ci
+
+# Build frontend
+COPY . .
+RUN npm run build
+
+# Copy data directory BEFORE building (so it's available)
+COPY data ./data
 
 # Build frontend
 COPY . .
@@ -26,6 +32,6 @@ RUN cp -r dist/* backend/public/
 
 WORKDIR /app/backend
 
-# Run the backend server
+# Run the backend server (which will serve the frontend too)
 EXPOSE 8080
 CMD ["node", "src/server.js"]
