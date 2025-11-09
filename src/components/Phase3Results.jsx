@@ -1316,9 +1316,7 @@ const CacheStatsDisplay = () => {
             )}
 
             {/* Cache Control Toggle */}
-            <div className="mb-4">
-              <CacheToggle />
-            </div>
+            <CacheToggle />
 
             {researchStatus === 'completed' && (
               <div className="flex items-center space-x-3 text-green-600">
@@ -1343,7 +1341,7 @@ const CacheStatsDisplay = () => {
             <button
               onClick={exportToExcel}
               disabled={products.length === 0}
-              className="px-4 py-2 text-white rounded-lg hover:opacity-90
+              className="px-4 py-2 text-white rounded-lg hover:opacity-90 disabled:opacity-50 flex items-center space-x-2 transition-all"
               style={{ backgroundColor: '#008080' }}
                        disabled:opacity-50 flex items-center space-x-2 transition-all"
             >
