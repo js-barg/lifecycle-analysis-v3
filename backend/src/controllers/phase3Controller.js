@@ -202,11 +202,25 @@ const phase3Controller = {
 
   // ENHANCED runAIResearch method with real-time updates
   async runAIResearch(req, res) {
-    const { jobId } = req.body;
+    const { jobId, useCache = true } = req.body;  // ADD useCache parameter
+    // ADD: Cache statistics tracking
+    let cacheStats = {
+      hits: 0,
+      misses: 0,
+      enabled: useCache,
+      totalTime: 0,
+      avgCacheTime: 0,
+      avgFreshTime: 0
+    };
+    
+    console.log(`Starting Phase 3 research for job: ${jobId}`);
+    console.log(`Cache ${useCache ? 'ENABLED' : 'DISABLED'} for this research session`); // ADD this log
+  
     const controller = this; // Store reference to controller for sendProgressUpdate
     
     try {
       console.log(`Starting Phase 3 AI research for job: ${jobId}`);
+      
       
       // Fetch products from Phase 3 analysis
       const phase3Query = `
@@ -268,7 +282,7 @@ const phase3Controller = {
         const productNumber = i + 1;
         
         // ENHANCED: Send update BEFORE researching with researchingProduct field
-        console.log(`ðŸ” Starting research for ${product.product_id} (${productNumber}/${products.length})`);
+        console.log(`🔍 Starting research for ${product.product_id} (${productNumber}/${products.length})`);
         
         controller.sendProgressUpdate(jobId, {
           total: products.length,
@@ -283,93 +297,130 @@ const phase3Controller = {
           updateHistory: [...updateHistory].slice(-5) // Keep last 5 updates
         });
         
-        try {
-          // Perform AI research
-          const rawResearchResult = await this.performResearchWithCache({
-            product_id: product.product_id,
-            manufacturer: product.manufacturer,
-            description: product.description,
-            product_category: product.product_category
-          });
-          
-          // Process the result
-          const processedResults = phase3DataProcessor.processForReport([{
-            ...product,
-            ...rawResearchResult,
-            job_id: jobId
-          }]);
-
-
-          const processedResult = processedResults[0];
-          
-
-
-          // Store the result using the fixed method
-          // Change to these two lines:
-          const estimatedResult = enhancedDateEstimation.estimateMissingDates(processedResult);
-          await controller.storePhase3Result(estimatedResult);  // Use estimatedResult instead
-          
-          results.push(processedResult);
-          successCount++;
-          processedCount++;
-          
-          // NEW: Count if dates were found
-          const foundDates = {
-            end_of_sale: !!processedResult.end_of_sale_date,
-            end_of_sw_maintenance: !!processedResult.end_of_sw_maintenance_date,
-            end_of_sw_vulnerability: !!processedResult.end_of_sw_vulnerability_maintenance_date,
-            last_day_of_support: !!processedResult.last_day_of_support_date
-          };
-          
-          const datesFoundForProduct = Object.values(foundDates).filter(v => v).length;
-          if (datesFoundForProduct > 0) {
-            datesFoundCount++;
-          }
-          
-          console.log(`âœ… Successfully researched ${product.product_id} - Found ${datesFoundForProduct} dates`);
-          
-          // NEW: Add to update history
-          const updateEntry = {
-            product_id: product.product_id,
-            success: true,
-            datesFound: datesFoundForProduct,
-            timestamp: new Date().toISOString()
-          };
-          updateHistory.push(updateEntry);
-          
-          // ENHANCED: Send success update with complete product data
-          controller.sendProgressUpdate(jobId, {
-            total: products.length,
-            processed: processedCount,
-            successful: successCount,
-            failed: failureCount,
-            datesFound: datesFoundCount,
-            current: productNumber,
-            currentProduct: product.product_id,
-            researchingProduct: null, // Clear researching status
-            message: `Completed ${product.product_id} (${processedCount} done, ${datesFoundCount} with dates)`,
-            updateHistory: [...updateHistory].slice(-5),
-            // NEW: Include the updated product data for real-time table updates
-            updatedProduct: {
-              product_id: processedResult.product_id,
-              end_of_sale_date: processedResult.end_of_sale_date,
-              end_of_sw_maintenance_date: processedResult.end_of_sw_maintenance_date,
-              end_of_sw_vulnerability_maintenance_date: processedResult.end_of_sw_vulnerability_maintenance_date,
-              last_day_of_support_date: processedResult.last_day_of_support_date,
-              end_of_life_date: processedResult.end_of_life_date,
-              date_introduced: processedResult.date_introduced,
-              lifecycle_status: processedResult.lifecycle_status,
-              risk_level: processedResult.risk_level,
-              ai_enhanced: true,
-              overall_confidence: processedResult.overall_confidence,
-              lifecycle_confidence: processedResult.lifecycle_confidence,
-              requires_review: processedResult.requires_review,
-              data_sources: processedResult.data_sources,
-              foundDates: foundDates // Include which specific dates were found
+    try {
+            const startTime = Date.now();  // Track time
+            
+            // Perform AI research - with cache control
+            let rawResearchResult;
+            
+            if (useCache) {
+              // Use cached version
+              rawResearchResult = await this.performResearchWithCache({
+                product_id: product.product_id,
+                manufacturer: product.manufacturer,
+                description: product.description,
+                product_category: product.product_category
+              });
+              
+              // Update cache statistics
+              if (rawResearchResult.fromCache) {
+                cacheStats.hits++;
+                console.log(`📦 Cache hit for ${product.product_id}`);
+              } else {
+                cacheStats.misses++;
+                console.log(`🔍 Fresh research for ${product.product_id} (cache miss)`);
+              }
+            } else {
+              // Skip cache entirely - go straight to AI research
+              console.log(`🔍 Fresh research for ${product.product_id} (cache disabled)`);
+              const googleAIResearchService = require('../services/googleAIResearchService');
+              rawResearchResult = await googleAIResearchService.performResearch({
+                product_id: product.product_id,
+                manufacturer: product.manufacturer,
+                description: product.description,
+                product_category: product.product_category
+              });
+              cacheStats.misses++;  // Count as miss when cache disabled
             }
-          });
-          
-        } catch (error) {
+            
+            // Track timing
+            const researchTime = Date.now() - startTime;
+            cacheStats.totalTime += researchTime;
+            
+            // Process the result
+            const processedResults = phase3DataProcessor.processForReport([{
+              ...product,
+              ...rawResearchResult,
+              job_id: jobId
+            }]);
+            
+            const processedResult = processedResults[0];
+            
+            // Store the result using the fixed method
+            const estimatedResult = enhancedDateEstimation.estimateMissingDates(processedResult);
+            await controller.storePhase3Result(estimatedResult);
+            
+            results.push(processedResult);
+            successCount++;
+            processedCount++;
+            
+            // Count if dates were found
+            const foundDates = {
+              end_of_sale: !!processedResult.end_of_sale_date,
+              end_of_sw_maintenance: !!processedResult.end_of_sw_maintenance_date,
+              end_of_sw_vulnerability: !!processedResult.end_of_sw_vulnerability_maintenance_date,
+              last_day_of_support: !!processedResult.last_day_of_support_date
+            };
+            
+            const datesFoundForProduct = Object.values(foundDates).filter(v => v).length;
+            if (datesFoundForProduct > 0) {
+              datesFoundCount++;
+            }
+            
+            console.log(`✅ Successfully researched ${product.product_id} - Found ${datesFoundForProduct} dates`);
+            
+            // Add to update history
+            const updateEntry = {
+              product_id: product.product_id,
+              success: true,
+              datesFound: datesFoundForProduct,
+              timestamp: new Date().toISOString()
+            };
+            updateHistory.push(updateEntry);
+            
+            // Send success update with complete product data
+            controller.sendProgressUpdate(jobId, {
+              total: products.length,
+              processed: processedCount,
+              successful: successCount,
+              failed: failureCount,
+              datesFound: datesFoundCount,
+              current: productNumber,
+              currentProduct: product.product_id,
+              researchingProduct: null,
+              message: `Completed ${product.product_id} (${processedCount} done, ${datesFoundCount} with dates)`,
+              updateHistory: [...updateHistory].slice(-5),
+              // Include cache statistics
+              cacheStats: {
+                hits: cacheStats.hits,
+                misses: cacheStats.misses,
+                enabled: cacheStats.enabled,
+                hitRate: cacheStats.hits > 0 ? 
+                  Math.round((cacheStats.hits / (cacheStats.hits + cacheStats.misses)) * 100) : 0,
+                avgTimeMs: processedCount > 0 ? Math.round(cacheStats.totalTime / processedCount) : 0
+              },
+              // Include the updated product data
+              updatedProduct: {
+                product_id: processedResult.product_id,
+                end_of_sale_date: processedResult.end_of_sale_date,
+                end_of_sw_maintenance_date: processedResult.end_of_sw_maintenance_date,
+                end_of_sw_vulnerability_maintenance_date: processedResult.end_of_sw_vulnerability_maintenance_date,
+                last_day_of_support_date: processedResult.last_day_of_support_date,
+                end_of_life_date: processedResult.end_of_life_date,
+                date_introduced: processedResult.date_introduced,
+                lifecycle_status: processedResult.lifecycle_status,
+                risk_level: processedResult.risk_level,
+                ai_enhanced: true,
+                overall_confidence: processedResult.overall_confidence,
+                lifecycle_confidence: processedResult.lifecycle_confidence,
+                requires_review: processedResult.requires_review,
+                data_sources: processedResult.data_sources,
+                foundDates: foundDates
+              }
+            });
+            
+          } catch (error) {
+        // Error handling stays the same (line 441 onwards)
           console.error(`âŒ Failed to research ${product.product_id}:`, error.message);
           failureCount++;
           processedCount++;
@@ -570,7 +621,8 @@ const phase3Controller = {
         last_day_of_support_date: cached.last_day_of_support_date,
         dates_found: 1,
         data_sources: cached.data_sources,
-        overall_confidence: (cached.confidence_score || 90) + 2
+        overall_confidence: (cached.confidence_score || 90) + 2,
+        fromCache: true  // Mark as from cache
       };
     }
   } catch(e) { /* ignore cache errors */ }
@@ -583,7 +635,10 @@ const phase3Controller = {
     aiResearchCache.saveToCache({...result, ...product}).catch(e => {});
   }
   
-  return result;
+  return {
+    ...result,
+    fromCache: false  // Mark as fresh
+  };
 },
   
   // Internal method for isolated product research

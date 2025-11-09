@@ -39,7 +39,8 @@ const Phase3Results = ({ phase2JobId, isActive, customerName, onComplete, onRese
   const [reportGenerating, setReportGenerating] = useState(false);
   const [viewMode, setViewMode] = useState('table'); // 'table' or 'report'
   const [eolYearBasis, setEolYearBasis] = useState('lastDayOfSupport');
-  
+  const [useCacheEnabled, setUseCacheEnabled] = useState(true);
+
   // ============= NEW REAL-TIME UPDATE STATE =============
   const [currentResearchProduct, setCurrentResearchProduct] = useState(null);
   const [recentlyUpdatedProducts, setRecentlyUpdatedProducts] = useState(new Map());
@@ -63,6 +64,14 @@ const Phase3Results = ({ phase2JobId, isActive, customerName, onComplete, onRese
     withAllDates: 0,
     filteredCount: 0,
     originalCount: 0
+  });
+  // Add after other state declarations:
+  const [cacheStats, setCacheStats] = useState({
+    hits: 0,
+    misses: 0,
+    hitRate: 0,
+    enabled: true,
+    avgTimeMs: 0
   });
 
   // ============= LIFECYCLE EFFECTS =============
@@ -188,6 +197,31 @@ const Phase3Results = ({ phase2JobId, isActive, customerName, onComplete, onRese
     return () => clearInterval(interval);
   }, [researchStatus, phase3JobId]); 
 
+  const CacheToggle = () => (
+  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+    <label className="flex items-center cursor-pointer">
+      <input
+        type="checkbox"
+        checked={useCacheEnabled}
+        onChange={(e) => setUseCacheEnabled(e.target.checked)}
+        className="mr-2 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+        disabled={researchStatus === 'running'}
+      />
+      <span className="text-sm font-medium text-gray-700">
+        Use Cached Research
+      </span>
+    </label>
+    <div className="flex items-center text-xs text-gray-500">
+      <Info className="h-3 w-3 mr-1" />
+      <span>
+        {useCacheEnabled 
+          ? "Will use previously cached AI research results when available"
+          : "Will perform fresh AI research for all products (slower)"}
+      </span>
+    </div>
+  </div>
+);
+
   // ============= DATA FETCHING FUNCTIONS =============
   const fetchResults = async () => {
     if (!phase3JobId) return;
@@ -310,10 +344,40 @@ const Phase3Results = ({ phase2JobId, isActive, customerName, onComplete, onRese
     }, 500);
   };
 
+  // Around line 500-600, where your other functions like handleResearch are
+  const CacheStatsDisplay = () => {
+    if (!cacheStats || (cacheStats.hits === 0 && cacheStats.misses === 0)) {
+      return null;
+    }
+    
+    return (
+      <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+        <div className="flex items-center space-x-4 text-sm">
+          <div className="flex items-center">
+            <Database className="h-4 w-4 mr-1 text-blue-600" />
+            <span className="font-medium">Cache Stats:</span>
+          </div>
+          <div className="text-green-600">
+            Hits: {cacheStats.hits}
+          </div>
+          <div className="text-orange-600">
+            Misses: {cacheStats.misses}
+          </div>
+          <div className="text-blue-600 font-semibold">
+            Hit Rate: {cacheStats.hitRate}%
+          </div>
+        </div>
+      </div>
+    );
+  };
 
     eventSource.onmessage = (event) => {
       try {
         const progress = JSON.parse(event.data);
+        // ADD: Update cache stats if present
+        if (progress.cacheStats) {
+          setCacheStats(progress.cacheStats);
+        }      
         console.log('Enhanced progress update:', progress);
         
         // ENHANCED: Check for dedicated completion message
@@ -367,7 +431,16 @@ const Phase3Results = ({ phase2JobId, isActive, customerName, onComplete, onRese
           ...progress,
           percentComplete: progress.total > 0 ? Math.round((progress.processed / progress.total) * 100) : 0
         }));
-        
+        // Update basic progress state
+  setResearchProgress(prevProgress => ({
+    ...progress,
+    percentComplete: progress.total > 0 ? Math.round((progress.processed / progress.total) * 100) : 0
+  }));
+  
+  // ADD THIS: Update cache stats if present
+  if (progress.cacheStats) {
+    setCacheStats(progress.cacheStats);
+  }
         // Handle current research product highlighting
         if (progress.researchingProduct) {
           setResearchingProductId(progress.researchingProduct);
@@ -522,33 +595,40 @@ const Phase3Results = ({ phase2JobId, isActive, customerName, onComplete, onRese
     };
     
     // Function to start the actual research
-    const startResearch = async () => {
-      try {
-        console.log('Starting research process...');
-        const postUrl = API_BASE_URL 
-          ? `${API_BASE_URL}/api/phase3/run-research`
-          : `/api/phase3/run-research`;
-        
-        const response = await fetch(postUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ jobId: phase3JobId })
-        });
-        
-        const data = await response.json();
-        
-        if (!response.ok || !data.success) {
-          console.error('Failed to start research:', data.error);
-          setResearchStatus('idle');
-          alert(data.error || 'Failed to start research');
-        }
-      } catch (error) {
-        console.error('Error starting research:', error);
-        setResearchStatus('idle');
-        alert('Failed to start research. Please check the console.');
-      }
-    };
-  };
+    // Function to start the actual research
+        const startResearch = async () => {
+          try {
+            console.log(`Starting research process... (Cache ${useCacheEnabled ? 'ENABLED' : 'DISABLED'})`);
+            
+            // Define URL first (BEFORE using it)
+            const postUrl = API_BASE_URL 
+              ? `${API_BASE_URL}/api/phase3/run-research`
+              : `/api/phase3/run-research`;
+            
+            // Single response declaration with cache parameter
+            const response = await fetch(postUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                jobId: phase3JobId,
+                useCache: useCacheEnabled  // Pass cache preference
+              })
+            });
+            
+            const data = await response.json();
+            
+            if (!response.ok || !data.success) {
+              console.error('Failed to start research:', data.error);
+              setResearchStatus('idle');
+              alert(data.error || 'Failed to start research');
+            }
+          } catch (error) {
+            console.error('Error starting research:', error);
+            setResearchStatus('idle');
+            alert('Failed to start research. Please check the console.');
+          }
+        };
+      };
 
   // ============= REAL-TIME UPDATE HELPER FUNCTIONS =============
   const scrollToProduct = (productId) => {
@@ -784,7 +864,9 @@ const Phase3Results = ({ phase2JobId, isActive, customerName, onComplete, onRese
             style={{ background: 'linear-gradient(to right, #008080, #002D62)', width: `${researchProgress.percentComplete || 0}%` }}
           />
         </div>
-        
+        {/* ADD THIS: Cache Statistics Display */}
+        {(cacheStats.hits > 0 || cacheStats.misses > 0) && <CacheStatsDisplay />}
+   
         {/* Current product being researched */}
         {currentResearchProduct && (
           <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
@@ -1052,6 +1134,69 @@ const Phase3Results = ({ phase2JobId, isActive, customerName, onComplete, onRese
     );
   };
 
+  // Cache Statistics Display Component
+const CacheStatsDisplay = () => {
+  if (!cacheStats || (cacheStats.hits === 0 && cacheStats.misses === 0)) {
+    return null; // Don't show if no stats yet
+  }
+  
+  return (
+    <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4 text-sm">
+          {/* Cache Icon and Label */}
+          <div className="flex items-center text-blue-700 font-medium">
+            <Database className="h-4 w-4 mr-1" />
+            <span>Cache Performance:</span>
+          </div>
+          
+          {/* Hit Count */}
+          <div className="flex items-center">
+            <span className="text-green-600 font-semibold">
+              ✓ Hits: {cacheStats.hits}
+            </span>
+          </div>
+          
+          {/* Miss Count */}
+          <div className="flex items-center">
+            <span className="text-orange-600 font-semibold">
+              ✗ Misses: {cacheStats.misses}
+            </span>
+          </div>
+          
+          {/* Hit Rate */}
+          <div className="flex items-center">
+            <span className="text-blue-700 font-bold">
+              Hit Rate: {cacheStats.hitRate || 0}%
+            </span>
+          </div>
+          
+          {/* Average Time */}
+          {cacheStats.avgTimeMs > 0 && (
+            <div className="flex items-center text-gray-600">
+              <Clock className="h-3 w-3 mr-1" />
+              <span>Avg: {cacheStats.avgTimeMs}ms</span>
+            </div>
+          )}
+        </div>
+        
+        {/* Visual Hit Rate Bar */}
+        <div className="flex items-center space-x-2">
+          <div className="w-24 h-4 bg-gray-200 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-green-500 transition-all duration-300"
+              style={{ width: `${cacheStats.hitRate || 0}%` }}
+            />
+          </div>
+          <span className="text-xs text-gray-600">
+            {cacheStats.hitRate || 0}%
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
   // ============= MAIN RENDER =============
   return (
     <div className="bg-white rounded-lg shadow-sm">
@@ -1167,6 +1312,11 @@ const Phase3Results = ({ phase2JobId, isActive, customerName, onComplete, onRese
                 <span>Start AI Research</span>
               </button>
             )}
+
+            {/* Cache Control Toggle */}
+            <div className="mb-4">
+              <CacheToggle />
+            </div>
 
             {researchStatus === 'completed' && (
               <div className="flex items-center space-x-3 text-green-600">
