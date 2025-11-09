@@ -299,7 +299,24 @@ const phase3Controller = {
           updateHistory: [...updateHistory].slice(-5) // Keep last 5 updates
         });
         
-
+        try {
+          // Research the product with AI
+          const result = await controller.researchwithAI(product, useCache, cacheStats);
+          
+          // Process successful result
+          successCount++;
+          processedCount++;
+          
+          // Store the result
+          await controller.storePhase3Result(result);
+          
+          // Add to results array
+          results.push(result);
+          
+          // Update history for successful research
+          // ... success handling code ...
+          
+        } catch (error) {
       
         // Error handling stays the same (line 441 onwards)
           console.error(`âŒ Failed to research ${product.product_id}:`, error.message);

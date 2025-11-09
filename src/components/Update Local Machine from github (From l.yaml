@@ -1,0 +1,32 @@
+Update Local Machine from github  (From local)
+  # Navigate to your project
+  cd C:\development\lifecycle-analysis
+
+  # Pull the changes from GitHub
+  git pull origin main
+
+  # This will get the renamed file from GitHub
+
+Update cloud Shell from GitHub (from Cloud Shell)
+  # Navigate to your project
+  cd ~/lifecycle-analysis-v3
+
+  # Pull the changes from GitHub
+  git pull origin main
+
+  # This will get the renamed file and any other changes
+
+Rebuild in cloud Shell
+  # Now trigger a new build with the corrected filename
+  gcloud builds submit --config=cloudbuild.yaml
+
+
+ gcloud builds submit --config=cloudbuild.yaml
+
+
+ echo "postgresql://postgres:labyrinth@/lifecycle_db?host=/cloudsql/lifecycle-analysis-477518:us-central1:lifecycle-db&sslmode=disable" | \
+  gcloud secrets versions add database-url --data-file=-
+
+
+  echo "postgresql://postgres:labyrinth@/lifecycle_db?host=/cloudsql/lifecycle-analysis-477518:us-central1:lifecycle-db&sslmode=disable" | \
+  gcloud secrets versions add database-url --data-file=-
