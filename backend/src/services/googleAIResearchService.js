@@ -7,8 +7,9 @@ const axios = require('axios');
 
 class GoogleAIResearchService {
     constructor() {
-        this.apiKey = process.env.GOOGLE_API_KEY;
-        this.searchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID;
+        // Support both local dev (GOOGLE_API_KEY) and Cloud Run (GOOGLE_CSE_API_KEY) naming
+        this.apiKey = process.env.GOOGLE_API_KEY || process.env.GOOGLE_CSE_API_KEY;
+        this.searchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID || process.env.GOOGLE_CSE_CX;
         this.searchUrl = 'https://www.googleapis.com/customsearch/v1';
         this.maxRetries = 3;
         
