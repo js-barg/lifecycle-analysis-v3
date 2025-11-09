@@ -199,31 +199,6 @@ const Phase3Results = ({ phase2JobId, isActive, customerName, onComplete, onRese
     return () => clearInterval(interval);
   }, [researchStatus, phase3JobId]); 
 
-  const CacheToggle = () => (
-  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-    <label className="flex items-center cursor-pointer">
-      <input
-        type="checkbox"
-        checked={useCacheEnabled}
-        onChange={(e) => setUseCacheEnabled(e.target.checked)}
-        className="mr-2 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
-        disabled={researchStatus === 'running'}
-      />
-      <span className="text-sm font-medium text-gray-700">
-        Use Cached Research
-      </span>
-    </label>
-    <div className="flex items-center text-xs text-gray-500">
-      <Info className="h-3 w-3 mr-1" />
-      <span>
-        {useCacheEnabled 
-          ? "Will use previously cached AI research results when available"
-          : "Will perform fresh AI research for all products (slower)"}
-      </span>
-    </div>
-  </div>
-);
-
   // ============= DATA FETCHING FUNCTIONS =============
   const fetchResults = async () => {
     if (!phase3JobId) return;
@@ -1315,8 +1290,21 @@ const CacheStatsDisplay = () => {
               </button>
             )}
 
-            {/* Cache Control Toggle */}
-            <CacheToggle />
+            {/* Cache Control Toggle - FORCE INLINE v3 */}
+            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={useCacheEnabled}
+                  onChange={(e) => setUseCacheEnabled(e.target.checked)}
+                  className="mr-2 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                  disabled={researchStatus === 'running'}
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  Use Cached Research
+                </span>
+              </label>
+            </div>
 
             {researchStatus === 'completed' && (
               <div className="flex items-center space-x-3 text-green-600">
