@@ -1290,17 +1290,24 @@ const CacheStatsDisplay = () => {
               </button>
             )}
 
-            {/* Cache Control Toggle - FORCE INLINE v3 */}
-            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-              <label className="flex items-center cursor-pointer">
+            {/* Cache Toggle Checkbox */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              padding: '12px',
+              backgroundColor: '#f3f4f6',
+              border: '1px solid #d1d5db',
+              borderRadius: '8px',
+              marginLeft: '10px'
+            }}>
+              <label style={{display: 'flex', alignItems: 'center', cursor: 'pointer'}}>
                 <input
                   type="checkbox"
                   checked={useCacheEnabled}
                   onChange={(e) => setUseCacheEnabled(e.target.checked)}
-                  className="mr-2 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
-                  disabled={researchStatus === 'running'}
+                  style={{marginRight: '8px'}}
                 />
-                <span className="text-sm font-medium text-gray-700">
+                <span style={{fontSize: '14px', fontWeight: '500'}}>
                   Use Cached Research
                 </span>
               </label>
