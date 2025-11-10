@@ -199,6 +199,31 @@ const Phase3Results = ({ phase2JobId, isActive, customerName, onComplete, onRese
     return () => clearInterval(interval);
   }, [researchStatus, phase3JobId]); 
 
+  const CacheToggle = () => (
+  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+    <label className="flex items-center cursor-pointer">
+      <input
+        type="checkbox"
+        checked={useCacheEnabled}
+        onChange={(e) => setUseCacheEnabled(e.target.checked)}
+        className="mr-2 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+        disabled={researchStatus === 'running'}
+      />
+      <span className="text-sm font-medium text-gray-700">
+        Use Cached Research
+      </span>
+    </label>
+    <div className="flex items-center text-xs text-gray-500">
+      <Info className="h-3 w-3 mr-1" />
+      <span>
+        {useCacheEnabled 
+          ? "Will use previously cached AI research results when available"
+          : "Will perform fresh AI research for all products (slower)"}
+      </span>
+    </div>
+  </div>
+);
+
   // ============= DATA FETCHING FUNCTIONS =============
   const fetchResults = async () => {
     if (!phase3JobId) return;
@@ -1177,6 +1202,9 @@ const CacheStatsDisplay = () => {
   // ============= MAIN RENDER =============
   return (
     <div className="bg-white rounded-lg shadow-sm">
+      <h1 style={{background:'red',color:'white',padding:'20px',fontSize:'30px'}}>
+        TEST - CAN YOU SEE THIS? - {new Date().toISOString()}
+      </h1>
       {/* Header */}
       <div className="text-white p-6 shadow-lg" style={{ backgroundColor: '#002D62' }}>
         <div className="flex items-center justify-between">
@@ -1277,41 +1305,37 @@ const CacheStatsDisplay = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             {researchStatus === 'idle' && (
-              <button
-                onClick={runAIResearch}
-                disabled={loading || products.length === 0}
-                className="px-6 py-3 text-white rounded-lg font-medium hover:opacity-90 
-                         disabled:opacity-50 disabled:cursor-not-allowed 
-                         flex items-center space-x-2 transition-all transform hover:scale-105 shadow-lg"
-                style={{ backgroundColor: '#008080' }}
-              >
-                <Zap className="h-5 w-5" />
-                <span>Start AI Research</span>
-              </button>
-            )}
+            <button
+              onClick={runAIResearch}
+              disabled={loading || products.length === 0}
+              className="px-6 py-3 text-white rounded-lg font-medium hover:opacity-90 
+                      disabled:opacity-50 disabled:cursor-not-allowed 
+                      flex items-center space-x-2 transition-all transform hover:scale-105 shadow-lg"
+              style={{ backgroundColor: '#008080' }}
+            >
+              <Zap className="h-5 w-5" />
+              <span>Start AI Research</span>
+            </button>
+          )}
 
-            {/* Cache Toggle Checkbox */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              padding: '12px',
-              backgroundColor: '#f3f4f6',
-              border: '1px solid #d1d5db',
-              borderRadius: '8px',
-              marginLeft: '10px'
-            }}>
-              <label style={{display: 'flex', alignItems: 'center', cursor: 'pointer'}}>
-                <input
-                  type="checkbox"
-                  checked={useCacheEnabled}
-                  onChange={(e) => setUseCacheEnabled(e.target.checked)}
-                  style={{marginRight: '8px'}}
-                />
-                <span style={{fontSize: '14px', fontWeight: '500'}}>
-                  Use Cached Research
-                </span>
-              </label>
-            </div>
+          {/* FORCE CACHE TOGGLE VISIBLE */}
+          <div style={{
+            display: 'inline-block',
+            padding: '12px',
+            backgroundColor: 'yellow',
+            border: '2px solid red',
+            marginLeft: '10px',
+            fontSize: '16px',
+            fontWeight: 'bold'
+          }}>
+            <input 
+              type="checkbox" 
+              defaultChecked 
+              id="cache-toggle-forced"
+              style={{marginRight: '8px', width: '20px', height: '20px'}}
+            />
+            <label htmlFor="cache-toggle-forced">USE CACHED RESEARCH</label>
+          </div>
 
             {researchStatus === 'completed' && (
               <div className="flex items-center space-x-3 text-green-600">
