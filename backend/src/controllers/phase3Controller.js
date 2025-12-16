@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const db = require('../database/dbConnection');
 const jobStorage = require('../utils/jobStorage');
 const googleAIResearchService = require('../services/googleAIResearchService');
+const generativeAIResearchService = require('../services/generativeAIResearchService');
 const lifecycleAnalysisService = require('../services/lifecycleAnalysisService');
 const phase3DataProcessor = require('../services/phase3DataProcessor');
 const enhancedDateEstimation = require('../services/enhancedDateEstimation');
@@ -204,7 +205,7 @@ const phase3Controller = {
 
   // ENHANCED runAIResearch method with real-time updates
   async runAIResearch(req, res) {
-    const { jobId, useCache = true } = req.body;  // ADD useCache parameter
+    const { jobId, useCache = true, researchMethod = 'google' } = req.body;  // ADD useCache and researchMethod parameters
     // ADD: Cache statistics tracking
     let cacheStats = {
       hits: 0,
@@ -216,6 +217,7 @@ const phase3Controller = {
     };
     
     console.log(`Starting Phase 3 research for job: ${jobId}`);
+    console.log(`Research Method: ${researchMethod === 'generative' ? 'Generative AI' : 'Google Search'}`);
     console.log(`Cache ${useCache ? 'ENABLED' : 'DISABLED'} for this research session`); // ADD this log
   
     const controller = this; // Store reference to controller for sendProgressUpdate
@@ -303,8 +305,8 @@ const phase3Controller = {
         });
         
         try {
-          // Research the product with AI
-          const result = await controller.researchwithAI(product, useCache, cacheStats);
+          // Research the product with AI (using selected method)
+          const result = await controller.researchwithAI(product, useCache, cacheStats, researchMethod);
           
           // Process successful result
           successCount++;
@@ -555,12 +557,21 @@ const phase3Controller = {
     }
   },
 
-  // MISSING METHOD: researchwithAI - performs Google research with optional caching
-  async researchwithAI(product, useCache = true, cacheStats = null) {
+  // MISSING METHOD: researchwithAI - performs research with optional caching and method selection
+  async researchwithAI(product, useCache = true, cacheStats = null, researchMethod = 'google') {
     const aiResearchCache = require('../services/aiResearchCacheService');
     const startTime = Date.now();
     
-    console.log(`🔍 Researching ${product.product_id} (cache: ${useCache ? 'enabled' : 'disabled'})`);
+    // Map research method to display name
+    const methodNameMap = {
+      'google': 'Google Search',
+      'gemini': 'Gemini AI',
+      'claude': 'Claude AI',
+      'generative': 'Generative AI' // Legacy support
+    };
+    const methodName = methodNameMap[researchMethod] || 'Google Search';
+    
+    console.log(`🔍 Researching ${product.product_id} (method: ${methodName}, cache: ${useCache ? 'enabled' : 'disabled'})`);
     
     // If cache is enabled, try to get from cache first
     if (useCache) {
@@ -603,24 +614,87 @@ const phase3Controller = {
       }
     }
     
-    // No cache hit or cache disabled - perform fresh Google research
-    console.log(`🌐 Performing fresh Google research for ${product.product_id}...`);
+    // No cache hit or cache disabled - perform fresh research
+    console.log(`🌐 Performing fresh ${methodName} research for ${product.product_id}...`);
     
-    // Check if Google API credentials are configured
-    const apiKey = process.env.GOOGLE_API_KEY || process.env.GOOGLE_CSE_API_KEY;
-    const searchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID || process.env.GOOGLE_CSE_CX;
+    // Select the appropriate research service
+    let researchService;
+    // Store original provider to restore later (for gemini/claude methods)
+    const originalProvider = (researchMethod === 'gemini' || researchMethod === 'claude' || researchMethod === 'generative') 
+      ? process.env.AI_RESEARCH_PROVIDER 
+      : undefined;
     
-    if (!apiKey || !searchEngineId) {
-      console.error(`❌ CRITICAL: Google API credentials not configured!`);
-      console.error(`   Missing: ${!apiKey ? 'GOOGLE_API_KEY or GOOGLE_CSE_API_KEY' : ''} ${!searchEngineId ? 'GOOGLE_SEARCH_ENGINE_ID or GOOGLE_CSE_CX' : ''}`);
-      console.error(`   Research cannot proceed without these credentials.`);
-      throw new Error('Google API credentials not configured. Please set GOOGLE_API_KEY and GOOGLE_SEARCH_ENGINE_ID environment variables.');
+    if (researchMethod === 'gemini' || researchMethod === 'claude' || researchMethod === 'generative') {
+      // Determine which AI provider to use
+      let provider;
+      if (researchMethod === 'gemini') {
+        provider = 'gemini';
+      } else if (researchMethod === 'claude') {
+        provider = 'anthropic';
+      } else {
+        // Legacy 'generative' method - use env var or default to gemini
+        provider = process.env.AI_RESEARCH_PROVIDER || 'gemini';
+      }
+      
+      // Set the provider in environment for the service to use
+      process.env.AI_RESEARCH_PROVIDER = provider;
+      
+      // Check if Generative AI credentials are configured
+      console.log(`   🔍 Checking AI credentials for provider: ${provider}...`);
+      console.log(`      GEMINI_API_KEY: ${process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.substring(0, 20) + '...' : 'NOT SET'}`);
+      console.log(`      OPENAI_API_KEY: ${process.env.OPENAI_API_KEY ? 'SET' : 'NOT SET'}`);
+      console.log(`      ANTHROPIC_API_KEY: ${process.env.ANTHROPIC_API_KEY ? 'SET' : 'NOT SET'}`);
+      console.log(`      AI_RESEARCH_PROVIDER: ${provider}`);
+      
+      const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
+      const openaiKey = process.env.OPENAI_API_KEY;
+      const anthropicKey = process.env.ANTHROPIC_API_KEY;
+      
+      // Check credentials based on provider
+      let hasCredentials = false;
+      let keyToShow = '';
+      
+      if (provider === 'gemini') {
+        hasCredentials = !!geminiKey;
+        keyToShow = geminiKey;
+      } else if (provider === 'anthropic') {
+        hasCredentials = !!anthropicKey;
+        keyToShow = anthropicKey;
+      } else if (provider === 'openai') {
+        hasCredentials = !!openaiKey;
+        keyToShow = openaiKey;
+      }
+      
+      if (!hasCredentials) {
+        console.error(`❌ CRITICAL: ${provider === 'gemini' ? 'Gemini' : provider === 'anthropic' ? 'Claude' : 'OpenAI'} API credentials not configured!`);
+        console.error(`   Please set ${provider === 'gemini' ? 'GEMINI_API_KEY' : provider === 'anthropic' ? 'ANTHROPIC_API_KEY' : 'OPENAI_API_KEY'}`);
+        console.error(`   Current working directory: ${process.cwd()}`);
+        console.error(`   NODE_ENV: ${process.env.NODE_ENV || 'NOT SET'}`);
+        throw new Error(`${provider === 'gemini' ? 'Gemini' : provider === 'anthropic' ? 'Claude' : 'OpenAI'} API credentials not configured. Please set ${provider === 'gemini' ? 'GEMINI_API_KEY' : provider === 'anthropic' ? 'ANTHROPIC_API_KEY' : 'OPENAI_API_KEY'} environment variable.`);
+      } else {
+        console.log(`   ✅ AI credentials found (Provider: ${provider}, Key: ${keyToShow ? keyToShow.substring(0, 10) + '...' : 'N/A'})`);
+      }
+      
+      researchService = generativeAIResearchService;
     } else {
-      console.log(`   ✅ Google API credentials found (API Key: ${apiKey.substring(0, 10)}..., Engine ID: ${searchEngineId.substring(0, 10)}...)`);
+      // Google Search method
+      const apiKey = process.env.GOOGLE_API_KEY || process.env.GOOGLE_CSE_API_KEY;
+      const searchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID || process.env.GOOGLE_CSE_CX;
+      
+      if (!apiKey || !searchEngineId) {
+        console.error(`❌ CRITICAL: Google API credentials not configured!`);
+        console.error(`   Missing: ${!apiKey ? 'GOOGLE_API_KEY or GOOGLE_CSE_API_KEY' : ''} ${!searchEngineId ? 'GOOGLE_SEARCH_ENGINE_ID or GOOGLE_CSE_CX' : ''}`);
+        console.error(`   Research cannot proceed without these credentials.`);
+        throw new Error('Google API credentials not configured. Please set GOOGLE_API_KEY and GOOGLE_SEARCH_ENGINE_ID environment variables.');
+      } else {
+        console.log(`   ✅ Google API credentials found (API Key: ${apiKey.substring(0, 10)}..., Engine ID: ${searchEngineId.substring(0, 10)}...)`);
+      }
+      
+      researchService = googleAIResearchService;
     }
     
     try {
-      const researchResult = await googleAIResearchService.performResearch({
+      const researchResult = await researchService.performResearch({
         product_id: product.product_id,
         manufacturer: product.manufacturer || product.mfg || '',
         description: product.description || '',
@@ -628,10 +702,19 @@ const phase3Controller = {
         product_type: product.product_type || product.type || ''
       });
       
+      // Restore original provider setting after service call (if it was changed)
+      if (originalProvider !== undefined && (researchMethod === 'gemini' || researchMethod === 'claude')) {
+        if (originalProvider) {
+          process.env.AI_RESEARCH_PROVIDER = originalProvider;
+        } else {
+          delete process.env.AI_RESEARCH_PROVIDER;
+        }
+      }
+      
       const researchTime = Date.now() - startTime;
       
       // ENHANCED LOGGING: Log what we actually got back
-      console.log(`✅ Google research completed for ${product.product_id} (${researchTime}ms)`);
+      console.log(`✅ ${methodName} research completed for ${product.product_id} (${researchTime}ms)`);
       console.log(`   📊 Research Result Summary:`);
       console.log(`      - end_of_sale_date: ${researchResult.end_of_sale_date || 'null'}`);
       console.log(`      - last_day_of_support_date: ${researchResult.last_day_of_support_date || 'null'}`);
@@ -652,7 +735,7 @@ const phase3Controller = {
       if (datesFound === 0) {
         console.warn(`   ⚠️ WARNING: No dates found in research result for ${product.product_id}`);
         console.warn(`   ⚠️ This could indicate:`);
-        console.warn(`      - Google API credentials missing or invalid`);
+        console.warn(`      - ${methodName} API credentials missing or invalid`);
         console.warn(`      - No EOL information found for this product`);
         console.warn(`      - Research service returned error result`);
       } else {
@@ -685,6 +768,44 @@ const phase3Controller = {
         }
       }
       
+      // ENHANCED: Add research method metadata for verification
+      // Extract sources from researchResult (which comes from extractedDates.sources)
+      let sources = [];
+      if (researchResult.data_sources && Array.isArray(researchResult.data_sources)) {
+        sources = researchResult.data_sources;
+      } else if (researchResult.sources && Array.isArray(researchResult.sources)) {
+        sources = researchResult.sources;
+      } else if (typeof researchResult.data_sources === 'object' && researchResult.data_sources.vendor_site) {
+        // Old format - just counts, no URLs
+        sources = [];
+      }
+      
+      const researchMetadata = {
+        method: researchMethod,
+        method_name: methodName,
+        timestamp: new Date().toISOString(),
+        provider: (researchMethod === 'gemini' || researchMethod === 'claude' || researchMethod === 'generative') 
+          ? (researchMethod === 'gemini' ? 'gemini' : researchMethod === 'claude' ? 'anthropic' : (process.env.AI_RESEARCH_PROVIDER || 'gemini'))
+          : 'google_cse',
+        raw_response: researchResult.raw_ai_response || null,
+        quality_checks: researchResult.quality_checks || null,
+        match_type: researchResult.match_type || null,
+        match_found: researchResult.match_found || null,
+        sources: sources, // Include sources with URLs
+        sources_count: sources.length
+      };
+      
+      // ENHANCED: Also include sources in data_sources if it's not already an array
+      // This ensures the sources array is preserved even after database transformations
+      let dataSourcesForStorage = researchResult.data_sources;
+      if (!Array.isArray(dataSourcesForStorage) && sources.length > 0) {
+        // Store both the array format (with URLs) and the count format
+        dataSourcesForStorage = {
+          ...dataSourcesForStorage,
+          sources_array: sources // Preserve the array with URLs
+        };
+      }
+      
       // Return result in expected format
       const result = {
         ...product,
@@ -696,10 +817,21 @@ const phase3Controller = {
         last_day_of_support_date: researchResult.last_day_of_support_date || null,
         overall_confidence: researchResult.overall_confidence || 0,
         lifecycle_confidence: researchResult.lifecycle_confidence || 0,
-        data_sources: researchResult.data_sources || { vendor_site: 0, third_party: 0, manual_entry: 0 },
+        data_sources: dataSourcesForStorage || researchResult.data_sources || { vendor_site: 0, third_party: 0, manual_entry: 0 },
         ai_enhanced: true, // CRITICAL: Must be true for dates to be stored
-        fromCache: false
+        fromCache: false,
+        research_metadata: researchMetadata // Store metadata for verification
       };
+      
+      // ENHANCED: Log verification info
+      console.log(`   ✅ VERIFICATION: Using ${methodName} method`);
+      console.log(`   📋 Research Metadata:`, JSON.stringify(researchMetadata, null, 2));
+      if (researchResult.quality_checks) {
+        console.log(`   📊 Quality Score: ${researchResult.quality_checks.score}/100`);
+        if (researchResult.quality_checks.issues.length > 0) {
+          console.log(`   ⚠️ Quality Issues: ${researchResult.quality_checks.issues.length}`);
+        }
+      }
       
       // Log the final result being returned
       console.log(`   📤 Returning result with ai_enhanced=${result.ai_enhanced}, dates: ${datesFound}`);

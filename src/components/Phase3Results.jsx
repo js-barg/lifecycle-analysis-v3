@@ -42,6 +42,7 @@ const Phase3Results = ({ phase2JobId, isActive, customerName, onComplete, onRese
   const [viewMode, setViewMode] = useState('table'); // 'table' or 'report'
   const [eolYearBasis, setEolYearBasis] = useState('lastDayOfSupport');
   const [useCacheEnabled, setUseCacheEnabled] = useState(true);
+  const [researchMethod, setResearchMethod] = useState('google'); // 'google', 'gemini', or 'claude'
 
   // ============= NEW REAL-TIME UPDATE STATE =============
   const [currentResearchProduct, setCurrentResearchProduct] = useState(null);
@@ -613,7 +614,8 @@ const Phase3Results = ({ phase2JobId, isActive, customerName, onComplete, onRese
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ 
                 jobId: phase3JobId,
-                useCache: useCacheEnabled  // Pass cache preference
+                useCache: useCacheEnabled,  // Pass cache preference
+                researchMethod: researchMethod  // Pass research method: 'google' or 'generative'
               })
             });
             
@@ -1113,18 +1115,146 @@ const Phase3Results = ({ phase2JobId, isActive, customerName, onComplete, onRese
                 {/* Data Sources */}
                 <div className="bg-white p-4 rounded-lg border">
                   <h4 className="font-medium text-gray-900 mb-2">Data Sources</h4>
-                  {product.data_sources && (
-                    <div className="space-y-1">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedProductForSources(product);
-                          setShowDataSourceModal(true);
-                        }}
-                        className="mt-2 text-xs font-medium hover:opacity-90" style={{ color: '#008080' }}
-                      >
-                        View Details
-                      </button>
+                  {(() => {
+                    // Handle different data_sources formats
+                    let sources = [];
+                    if (product.data_sources) {
+                      if (Array.isArray(product.data_sources)) {
+                        sources = product.data_sources;
+                      } else if (product.data_sources.sources_array && Array.isArray(product.data_sources.sources_array)) {
+                        // New format with sources_array preserved
+                        sources = product.data_sources.sources_array;
+                      } else if (product.data_sources.sources && Array.isArray(product.data_sources.sources)) {
+                        sources = product.data_sources.sources;
+                      } else if (product.data_sources.vendor_site || product.data_sources.third_party) {
+                        // Old format - just counts, no URLs
+                        sources = [];
+                      }
+                    }
+                    
+                    // Also check product.sources directly (from researchResult.sources)
+                    if (sources.length === 0 && product.sources && Array.isArray(product.sources)) {
+                      sources = product.sources;
+                    }
+                    
+                    // Also check research_metadata for sources
+                    if (sources.length === 0 && product.research_metadata && product.research_metadata.sources) {
+                      sources = product.research_metadata.sources;
+                    }
+                    
+                    // If we have sources with URLs, display them
+                    if (sources.length > 0 && sources[0].url) {
+                      return (
+                        <div className="space-y-2">
+                          <div className="text-xs text-gray-600 mb-2">
+                            {sources.length} source{sources.length !== 1 ? 's' : ''} found
+                          </div>
+                          <div className="space-y-1 max-h-32 overflow-y-auto">
+                            {sources.slice(0, 5).map((source, idx) => {
+                              const url = typeof source === 'string' ? source : source.url;
+                              const type = typeof source === 'object' && source.type ? source.type : 'vendor';
+                              const isVendor = type === 'vendor' || type === 'vendor_site';
+                              
+                              if (!url) return null;
+                              
+                              return (
+                                <div key={idx} className="text-xs">
+                                  <a
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="text-blue-600 hover:text-blue-800 hover:underline break-all flex items-start"
+                                    title={url}
+                                  >
+                                    <span className="mr-1">🔗</span>
+                                    <span className="truncate flex-1">{url}</span>
+                                  </a>
+                                  {isVendor && (
+                                    <span className="ml-2 px-1 py-0.5 bg-green-100 text-green-700 text-xs rounded">
+                                      Vendor
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                          {sources.length > 5 && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              +{sources.length - 5} more source{sources.length - 5 !== 1 ? 's' : ''}
+                            </div>
+                          )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedProductForSources(product);
+                              setShowDataSourceModal(true);
+                            }}
+                            className="mt-2 text-xs font-medium hover:opacity-90" style={{ color: '#008080' }}
+                          >
+                            View All Details
+                          </button>
+                        </div>
+                      );
+                    }
+                    
+                    // Fallback: Show counts if available
+                    if (product.data_sources && (product.data_sources.vendor_site || product.data_sources.third_party)) {
+                      return (
+                        <div className="space-y-1 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Vendor Sites:</span>
+                            <span className="font-medium">{product.data_sources.vendor_site || 0}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Third Party:</span>
+                            <span className="font-medium">{product.data_sources.third_party || 0}</span>
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedProductForSources(product);
+                              setShowDataSourceModal(true);
+                            }}
+                            className="mt-2 text-xs font-medium hover:opacity-90" style={{ color: '#008080' }}
+                          >
+                            View Details
+                          </button>
+                        </div>
+                      );
+                    }
+                    
+                    // No data sources available
+                    return (
+                      <div className="text-sm text-gray-500">
+                        No data sources available
+                      </div>
+                    );
+                  })()}
+                  
+                  {/* Show match information if available */}
+                  {product.match_type && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      <div className="text-xs text-gray-600">
+                        <div className="flex justify-between mb-1">
+                          <span>Match Type:</span>
+                          <span className={`font-medium ${
+                            product.match_type === 'direct' ? 'text-green-600' :
+                            product.match_type === 'with_extra_chars' ? 'text-yellow-600' :
+                            'text-red-600'
+                          }`}>
+                            {product.match_type === 'direct' ? 'Direct Match' :
+                             product.match_type === 'with_extra_chars' ? 'Match (Extra Chars)' :
+                             'No Match'}
+                          </span>
+                        </div>
+                        {product.match_found && (
+                          <div className="flex justify-between">
+                            <span>Found As:</span>
+                            <span className="font-medium text-gray-800">{product.match_found}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1301,6 +1431,78 @@ const CacheStatsDisplay = () => {
       <div className="p-6 border-b bg-gray-50">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
+            {/* Research Method Selection */}
+            <div className="flex items-center space-x-3 px-4 py-2 bg-white rounded-lg border border-gray-300">
+              <label className="text-sm font-medium text-gray-700">Research Method:</label>
+              <div className="flex items-center space-x-4">
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="radio"
+                    name="researchMethod"
+                    value="google"
+                    checked={researchMethod === 'google'}
+                    onChange={(e) => setResearchMethod(e.target.value)}
+                    disabled={researchStatus === 'researching'}
+                    className="mr-2 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300"
+                    style={{
+                      cursor: researchStatus === 'researching' ? 'not-allowed' : 'pointer'
+                    }}
+                  />
+                  <span className={`text-sm ${researchStatus === 'researching' ? 'text-gray-400' : 'text-gray-700'}`}>
+                    Google Search
+                  </span>
+                </label>
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="radio"
+                    name="researchMethod"
+                    value="gemini"
+                    checked={researchMethod === 'gemini'}
+                    onChange={(e) => setResearchMethod(e.target.value)}
+                    disabled={researchStatus === 'researching'}
+                    className="mr-2 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300"
+                    style={{
+                      cursor: researchStatus === 'researching' ? 'not-allowed' : 'pointer'
+                    }}
+                  />
+                  <span className={`text-sm ${researchStatus === 'researching' ? 'text-gray-400' : 'text-gray-700'}`}>
+                    Gemini AI
+                  </span>
+                </label>
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="radio"
+                    name="researchMethod"
+                    value="claude"
+                    checked={researchMethod === 'claude'}
+                    onChange={(e) => setResearchMethod(e.target.value)}
+                    disabled={researchStatus === 'researching'}
+                    className="mr-2 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300"
+                    style={{
+                      cursor: researchStatus === 'researching' ? 'not-allowed' : 'pointer'
+                    }}
+                  />
+                  <span className={`text-sm ${researchStatus === 'researching' ? 'text-gray-400' : 'text-gray-700'}`}>
+                    Claude AI
+                  </span>
+                </label>
+              </div>
+              <Info
+                className="h-4 w-4"
+                style={{
+                  color: researchStatus === 'researching' ? '#9CA3AF' : '#6B7280',
+                  marginLeft: '4px'
+                }}
+                title={
+                  researchMethod === 'google' 
+                    ? "Uses Google Custom Search to find product lifecycle information from web pages" 
+                    : researchMethod === 'gemini'
+                    ? "Uses Google Gemini AI to intelligently research product lifecycle dates"
+                    : "Uses Anthropic Claude AI to intelligently research product lifecycle dates"
+                }
+              />
+            </div>
+
             {/* Cache Toggle - Always Visible, Inline Implementation */}
             <div className="flex items-center space-x-2 px-4 py-2 bg-white rounded-lg border border-gray-300">
               <input
