@@ -38,3 +38,4 @@ echo "  gcloud builds submit --config=cloudbuild.yaml"
 echo ""
 echo "Then wait 10-15 minutes and check production again"
 
+

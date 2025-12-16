@@ -538,6 +538,39 @@ const saveForPhase3 = async (req, res) => {
     
     jobStorage.set(jobId, job);
 
+    // CRITICAL: Also store in database for Cloud Run compatibility
+    // In Cloud Run, different instances don't share in-memory storage
+    const db = require('../database/dbConnection');
+    try {
+      await db.query(
+        `INSERT INTO phase2_jobs (job_id, customer_name, phase3_ready, phase3_ready_at, phase3_filter_name, phase3_filtered_items, phase3_stats, all_items, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+         ON CONFLICT (job_id) 
+         DO UPDATE SET 
+           phase3_ready = EXCLUDED.phase3_ready,
+           phase3_ready_at = EXCLUDED.phase3_ready_at,
+           phase3_filter_name = EXCLUDED.phase3_filter_name,
+           phase3_filtered_items = EXCLUDED.phase3_filtered_items,
+           phase3_stats = EXCLUDED.phase3_stats,
+           all_items = EXCLUDED.all_items,
+           updated_at = NOW()`,
+        [
+          jobId,
+          job.customerName || null,
+          true,
+          new Date().toISOString(),
+          filterName || null,
+          JSON.stringify(filteredItems),
+          JSON.stringify(job.phase3Stats),
+          JSON.stringify(job.items)
+        ]
+      );
+      console.log('✅ Phase 2 job data saved to database for Cloud Run compatibility');
+    } catch (dbError) {
+      // Log but don't fail - in-memory storage still works for local dev
+      console.error('⚠️  Failed to save Phase 2 job to database (non-critical):', dbError.message);
+    }
+
     res.json({
       success: true,
       phase3Ready: true,

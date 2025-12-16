@@ -167,3 +167,4 @@ Run the diagnostic script above and share the output. The checkbox might be:
 - Not rendered due to React conditional
 - In the DOM but with wrong styling
 
+

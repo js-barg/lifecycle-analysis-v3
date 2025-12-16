@@ -69,3 +69,4 @@ echo "1. Build cache issue - old dist folder used"
 echo "2. Vite build configuration issue"
 echo "3. File wasn't copied before build"
 
+

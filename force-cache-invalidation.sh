@@ -33,3 +33,4 @@ echo "   gcloud run services update-traffic lifecycle-analysis --to-latest --reg
 echo "3. In browser: Clear cache completely or use incognito"
 echo "4. Hard refresh with DevTools Network tab open and 'Disable cache' checked"
 
+

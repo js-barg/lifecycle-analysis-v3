@@ -22,11 +22,63 @@ const phase3Controller = {
     try {
       console.log('Phase 3 init request for Phase 2 job:', phase2JobId);
       
-      // Verify Phase 2 job exists
-      const phase2Job = jobStorage.get(phase2JobId);
+      // Try to get Phase 2 job from in-memory storage first (for local dev)
+      let phase2Job = jobStorage.get(phase2JobId);
+      
+      // If not in memory, try to retrieve from database (for Cloud Run)
       if (!phase2Job) {
-        console.error('Phase 2 job not found:', phase2JobId);
-        return res.status(404).json({ error: 'Phase 2 job not found' });
+        console.log('Phase 2 job not in memory, checking database...');
+        try {
+          const dbResult = await db.query(
+            `SELECT job_id, customer_name, phase3_ready, phase3_ready_at, phase3_filter_name, 
+                    phase3_filtered_items, phase3_stats, all_items
+             FROM phase2_jobs 
+             WHERE job_id = $1`,
+            [phase2JobId]
+          );
+          
+          if (dbResult.rows.length > 0) {
+            const dbJob = dbResult.rows[0];
+            console.log('✅ Found Phase 2 job in database');
+            
+            // Reconstruct phase2Job object from database
+            // PostgreSQL JSONB columns return as objects, but handle both cases
+            const parseJsonb = (value) => {
+              if (!value) return null;
+              if (typeof value === 'string') {
+                try {
+                  return JSON.parse(value);
+                } catch (e) {
+                  console.error('Failed to parse JSONB value:', e);
+                  return null;
+                }
+              }
+              return value; // Already an object
+            };
+            
+            phase2Job = {
+              customerName: dbJob.customer_name,
+              phase3Ready: dbJob.phase3_ready,
+              phase3ReadyAt: dbJob.phase3_ready_at,
+              phase3FilterName: dbJob.phase3_filter_name,
+              phase3FilteredItems: parseJsonb(dbJob.phase3_filtered_items),
+              phase3Stats: parseJsonb(dbJob.phase3_stats),
+              items: parseJsonb(dbJob.all_items) || []
+            };
+            console.log('Phase 2 job reconstructed from database, phase3Ready:', phase2Job.phase3Ready);
+          } else {
+            console.error('Phase 2 job not found in database either:', phase2JobId);
+            return res.status(404).json({ error: 'Phase 2 job not found' });
+          }
+        } catch (dbError) {
+          console.error('Error retrieving Phase 2 job from database:', dbError);
+          return res.status(500).json({ 
+            error: 'Failed to retrieve Phase 2 job data',
+            details: dbError.message 
+          });
+        }
+      } else {
+        console.log('Phase 2 job found in memory');
       }
       
       console.log('Phase 2 job found, phase3Ready:', phase2Job.phase3Ready);

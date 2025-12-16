@@ -41,3 +41,4 @@ docker run --rm $SERVICE_IMAGE sh -c "
     find /app/backend/public/assets -name '*.js' -exec grep -l 'use-cached-research-checkbox' {} \; 2>/dev/null | head -3 || echo 'Not found in any JS file'
 "
 
+

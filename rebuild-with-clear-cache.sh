@@ -60,3 +60,4 @@ echo "2. Force traffic to latest: gcloud run services update-traffic lifecycle-a
 echo "3. Hard refresh browser (Ctrl+Shift+R)"
 echo "4. Verify checkbox appears"
 
+

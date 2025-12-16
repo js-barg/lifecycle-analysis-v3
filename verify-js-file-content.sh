@@ -51,3 +51,4 @@ docker run --rm $SERVICE_IMAGE sh -c "
     ls -lth /app/backend/public/assets/index-*.js | head -3
 "
 
+

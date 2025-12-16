@@ -87,3 +87,4 @@ if (hasTextInHTML) {
     console.log('   The JS file might have it, but React isn\'t rendering it');
 }
 
+

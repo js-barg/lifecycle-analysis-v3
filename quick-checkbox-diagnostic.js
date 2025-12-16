@@ -70,3 +70,4 @@ if (startButton && !hasCheckboxText) {
     console.log('   Possible: React hydration issue');
 }
 
+
