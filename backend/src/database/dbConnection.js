@@ -6,12 +6,17 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Get database URL - in Cloud Run this comes from secrets
-const databaseUrl = process.env.DATABASE_URL;
+// Trim whitespace/newlines that might be in the secret value
+const databaseUrl = process.env.DATABASE_URL ? process.env.DATABASE_URL.trim() : null;
 
 // Log connection info (without exposing credentials)
 if (databaseUrl) {
-  const urlInfo = new URL(databaseUrl);
-  console.log(`📊 Database connection: ${urlInfo.protocol}//${urlInfo.hostname}${urlInfo.pathname}`);
+  try {
+    const urlInfo = new URL(databaseUrl);
+    console.log(`📊 Database connection: ${urlInfo.protocol}//${urlInfo.hostname}${urlInfo.pathname}`);
+  } catch (urlError) {
+    console.warn('⚠️  Could not parse DATABASE_URL:', urlError.message);
+  }
 } else {
   console.error('❌ DATABASE_URL environment variable is not set!');
   console.error('   Falling back to localhost (this will fail in Cloud Run)');
@@ -29,16 +34,21 @@ pool.on('error', (err, client) => {
   console.error('❌ Unexpected error on idle client', err);
 });
 
-// Test connection on startup (in production)
+// Test connection on startup (in production) - async, non-blocking
+// Don't block startup if connection fails - it will fail later when actually needed
 if (process.env.NODE_ENV === 'production') {
-  pool.query('SELECT NOW()')
-    .then(() => {
-      console.log('✅ Database connection successful');
-    })
-    .catch((err) => {
-      console.error('❌ Database connection failed:', err.message);
-      console.error('   DATABASE_URL:', databaseUrl ? 'SET' : 'NOT SET');
-    });
+  // Test asynchronously without blocking
+  setTimeout(() => {
+    pool.query('SELECT NOW()')
+      .then(() => {
+        console.log('✅ Database connection test successful');
+      })
+      .catch((err) => {
+        console.error('❌ Database connection test failed:', err.message);
+        console.error('   DATABASE_URL:', databaseUrl ? 'SET (but connection failed)' : 'NOT SET');
+        // Don't throw - let the app start, connection will be retried on actual use
+      });
+  }, 1000); // Wait 1 second after startup
 }
 
 module.exports = {
