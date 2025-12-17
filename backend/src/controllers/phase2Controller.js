@@ -509,44 +509,23 @@ const analyzeAndFillFields = async (req, res) => {
   }
 };
 
-// ============================================================================
-// SAVE FOR PHASE 3 - CLOUD RUN COMPATIBLE VERSION
-// ============================================================================
-// This is the CRITICAL function that persists Phase 2 data to PostgreSQL
-// so that Phase 3 can read it even on a different Cloud Run instance.
-// ============================================================================
+// Save Phase 2 data for Phase 3
 const saveForPhase3 = async (req, res) => {
   const { jobId } = req.params;
   const { filteredIds, filterName, totalFiltered, totalOriginal } = req.body;
   
-  // Get database connection at the top level
-  const db = require('../database/dbConnection');
-  
   try {
-    console.log('='.repeat(60));
-    console.log('saveForPhase3 called');
-    console.log('  jobId:', jobId);
-    console.log('  filterName:', filterName);
-    console.log('  totalFiltered:', totalFiltered);
-    console.log('  totalOriginal:', totalOriginal);
-    console.log('  filteredIds count:', filteredIds?.length);
-    console.log('='.repeat(60));
-    
-    // Get job from in-memory storage
     const job = jobStorage.get(jobId);
     if (!job) {
-      console.error('❌ Job not found in memory:', jobId);
       return res.status(404).json({ error: 'Job not found' });
     }
 
-    // Filter items based on the provided IDs
+    // Store ONLY the filtered items for Phase 3
     const filteredItems = job.items.filter(item => 
       filteredIds.includes(String(item.id))
     );
-    
-    console.log(`Filtered ${filteredItems.length} items from ${job.items.length} total`);
 
-    // Update in-memory storage (for local dev / same-instance requests)
+    // Mark as ready for Phase 3 with filtered data
     job.phase3Ready = true;
     job.phase3ReadyAt = new Date().toISOString();
     job.phase3FilteredItems = filteredItems;
@@ -556,126 +535,78 @@ const saveForPhase3 = async (req, res) => {
       original: totalOriginal,
       filterPercentage: Math.round((totalFiltered / totalOriginal) * 100)
     };
+    
     jobStorage.set(jobId, job);
 
-    // ========================================================================
-    // CRITICAL: Save to PostgreSQL for Cloud Run cross-instance compatibility
-    // ========================================================================
+    // CRITICAL: Also store in database for Cloud Run compatibility
+    // In Cloud Run, different instances don't share in-memory storage
+    const db = require('../database/dbConnection');
     try {
-      // Test database connection first
-      console.log('Testing database connection...');
-      const connTest = await db.query('SELECT NOW() as current_time');
-      console.log('✅ Database connected:', connTest.rows[0].current_time);
-      
-      // Check if table exists (don't try to create it - migration should have done that)
-      const tableCheck = await db.query(`
-        SELECT EXISTS (
-          SELECT FROM information_schema.tables 
-          WHERE table_schema = 'public' 
-          AND table_name = 'phase2_jobs'
-        ) as exists
-      `);
-      
-      if (!tableCheck.rows[0].exists) {
-        console.error('❌ phase2_jobs table does not exist!');
-        console.error('   Run the migration: psql $DATABASE_URL -f phase2_jobs_migration.sql');
-        // Don't fail - continue with in-memory storage for local dev
-        console.warn('⚠️  Continuing with in-memory storage only (will fail on Cloud Run)');
-      } else {
-        console.log('✅ phase2_jobs table exists');
-        
-        // Insert or update the job data
-        const upsertResult = await db.query(`
-          INSERT INTO phase2_jobs (
-            job_id, 
-            customer_name, 
-            phase3_ready, 
-            phase3_ready_at, 
-            phase3_filter_name, 
-            phase3_filtered_items, 
-            phase3_stats, 
-            all_items,
-            created_by_instance,
-            updated_at
+      // Ensure table exists (auto-create if needed)
+      try {
+        await db.query(`
+          CREATE TABLE IF NOT EXISTS phase2_jobs (
+            job_id VARCHAR(255) PRIMARY KEY,
+            customer_name VARCHAR(255),
+            phase3_ready BOOLEAN DEFAULT false,
+            phase3_ready_at TIMESTAMP,
+            phase3_filter_name VARCHAR(255),
+            phase3_filtered_items JSONB,
+            phase3_stats JSONB,
+            all_items JSONB,
+            created_at TIMESTAMP DEFAULT NOW(),
+            updated_at TIMESTAMP DEFAULT NOW()
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
-          ON CONFLICT (job_id) 
-          DO UPDATE SET 
-            phase3_ready = EXCLUDED.phase3_ready,
-            phase3_ready_at = EXCLUDED.phase3_ready_at,
-            phase3_filter_name = EXCLUDED.phase3_filter_name,
-            phase3_filtered_items = EXCLUDED.phase3_filtered_items,
-            phase3_stats = EXCLUDED.phase3_stats,
-            all_items = EXCLUDED.all_items,
-            updated_at = NOW()
-          RETURNING job_id, updated_at
-        `, [
+        `);
+        await db.query(`
+          CREATE INDEX IF NOT EXISTS idx_phase2_jobs_phase3_ready 
+          ON phase2_jobs(phase3_ready) WHERE phase3_ready = true
+        `);
+        console.log('✅ phase2_jobs table verified/created');
+      } catch (createError) {
+        console.warn('⚠️  Could not ensure phase2_jobs table exists (may already exist):', createError.message);
+      }
+      
+      await db.query(
+        `INSERT INTO phase2_jobs (job_id, customer_name, phase3_ready, phase3_ready_at, phase3_filter_name, phase3_filtered_items, phase3_stats, all_items, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+         ON CONFLICT (job_id) 
+         DO UPDATE SET 
+           phase3_ready = EXCLUDED.phase3_ready,
+           phase3_ready_at = EXCLUDED.phase3_ready_at,
+           phase3_filter_name = EXCLUDED.phase3_filter_name,
+           phase3_filtered_items = EXCLUDED.phase3_filtered_items,
+           phase3_stats = EXCLUDED.phase3_stats,
+           all_items = EXCLUDED.all_items,
+           updated_at = NOW()`,
+        [
           jobId,
-          job.customerName || 'Unknown',
+          job.customerName || null,
           true,
           new Date().toISOString(),
           filterName || null,
           JSON.stringify(filteredItems),
           JSON.stringify(job.phase3Stats),
-          JSON.stringify(job.items),
-          process.env.K_REVISION || 'local' // Cloud Run instance identifier
-        ]);
-        
-        console.log('✅ Phase 2 job saved to database');
-        console.log('   job_id:', upsertResult.rows[0].job_id);
-        console.log('   updated_at:', upsertResult.rows[0].updated_at);
-        
-        // Verify the data was saved correctly
-        const verifyResult = await db.query(`
-          SELECT 
-            job_id,
-            phase3_ready,
-            jsonb_array_length(phase3_filtered_items) as filtered_count,
-            jsonb_array_length(all_items) as total_count
-          FROM phase2_jobs 
-          WHERE job_id = $1
-        `, [jobId]);
-        
-        if (verifyResult.rows.length > 0) {
-          console.log('✅ Verification successful:');
-          console.log('   phase3_ready:', verifyResult.rows[0].phase3_ready);
-          console.log('   filtered_count:', verifyResult.rows[0].filtered_count);
-          console.log('   total_count:', verifyResult.rows[0].total_count);
-        }
-      }
+          JSON.stringify(job.items)
+        ]
+      );
+      console.log('✅ Phase 2 job data saved to database for Cloud Run compatibility');
     } catch (dbError) {
-      // Log detailed error but don't fail the request
-      console.error('❌ Database save failed:', dbError.message);
-      console.error('   Error code:', dbError.code);
-      console.error('   Error detail:', dbError.detail);
+      // Log but don't fail - in-memory storage still works for local dev
+      console.error('⚠️  Failed to save Phase 2 job to database (non-critical):', dbError.message);
       console.error('   Full error:', dbError);
-      
-      // Return a warning in the response
-      return res.json({
-        success: true,
-        phase3Ready: true,
-        itemsForPhase3: filteredItems.length,
-        filterApplied: filterName,
-        warning: 'Data saved to memory but database save failed. Phase 3 may not work on Cloud Run.',
-        dbError: dbError.message
-      });
     }
 
-    // Success response
     res.json({
       success: true,
       phase3Ready: true,
       itemsForPhase3: filteredItems.length,
-      filterApplied: filterName,
-      persistedToDatabase: true
+      filterApplied: filterName
     });
 
   } catch (error) {
-    console.error('❌ saveForPhase3 error:', error);
-    res.status(500).json({ 
-      error: 'Failed to save for Phase 3',
-      details: error.message 
-    });
+    console.error('Save for Phase 3 error:', error);
+    res.status(500).json({ error: 'Failed to save for Phase 3' });
   }
 };
 
