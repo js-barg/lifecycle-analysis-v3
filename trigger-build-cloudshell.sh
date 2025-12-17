@@ -42,3 +42,4 @@ echo "Check build status at:"
 echo "https://console.cloud.google.com/cloud-build/builds?project=lifecycle-analysis-477518"
 
 
+

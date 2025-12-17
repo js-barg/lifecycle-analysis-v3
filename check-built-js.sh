@@ -70,3 +70,4 @@ echo "2. Vite build configuration issue"
 echo "3. File wasn't copied before build"
 
 
+

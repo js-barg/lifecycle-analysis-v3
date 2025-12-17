@@ -1,13 +1,19 @@
+options:
+  logging: CLOUD_LOGGING_ONLY
+
 steps:
-  # Build the container image
+  # 1. Build the container image with NO-CACHE to ensure latest code
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/$PROJECT_ID/lifecycle-analysis:$COMMIT_SHA', '.']
+    args: 
+      - 'build'
+      - '--no-cache'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/lifecycle-analysis-477518/lifecycle-analysis/app:$SHORT_SHA'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/lifecycle-analysis-477518/lifecycle-analysis/app:latest'
+      - '.'
   
-  # Push the image to Container Registry
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/lifecycle-analysis:$COMMIT_SHA']
-  
-  # Deploy to Cloud Run
+  # 2. Deploy to Cloud Run using the unique SHORT_SHA tag
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -15,7 +21,7 @@ steps:
       - 'deploy'
       - 'lifecycle-analysis'
       - '--image'
-      - 'gcr.io/$PROJECT_ID/lifecycle-analysis:$COMMIT_SHA'
+      - 'us-central1-docker.pkg.dev/lifecycle-analysis-477518/lifecycle-analysis/app:$SHORT_SHA'
       - '--region'
       - 'us-central1'
       - '--platform'
@@ -23,5 +29,14 @@ steps:
       - '--port'
       - '8080'
       - '--allow-unauthenticated'
+      - '--add-cloudsql-instances'
+      - 'lifecycle-analysis-477518:us-central1:lifecycle-db'
+      - '--set-secrets'
+      - 'DATABASE_URL=database-url:latest,GOOGLE_CSE_API_KEY=google-cse-api:latest,GOOGLE_CSE_CX=google-cse-cx:latest,GEMINI_API_KEY=gemini-api-key:latest'
+
+# Automatically push images to Artifact Registry on success
+images:
+  - 'us-central1-docker.pkg.dev/lifecycle-analysis-477518/lifecycle-analysis/app:$SHORT_SHA'
+  - 'us-central1-docker.pkg.dev/lifecycle-analysis-477518/lifecycle-analysis/app:latest'
 
 timeout: '1200s'

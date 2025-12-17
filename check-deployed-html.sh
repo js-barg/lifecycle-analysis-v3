@@ -42,3 +42,4 @@ docker run --rm $SERVICE_IMAGE sh -c "
 "
 
 
+

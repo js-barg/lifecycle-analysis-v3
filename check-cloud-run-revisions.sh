@@ -22,3 +22,4 @@ echo "You might need to ensure traffic goes to the latest revision:"
 echo "gcloud run services update-traffic lifecycle-analysis --to-latest --region=us-central1"
 
 
+
