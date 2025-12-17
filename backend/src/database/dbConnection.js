@@ -2,8 +2,6 @@ console.log('=== DBCONNECTION v2025-12-17-A LOADING ===');
 console.log('=== DATABASE_URL at load:', process.env.DATABASE_URL ? 'SET' : 'NOT SET', '===');
 const { Pool } = require('pg');
 
-const { Pool } = require('pg');
-
 // Only load dotenv in non-production (Cloud Run provides env vars directly)
 if (process.env.NODE_ENV !== 'production') {
   try {
