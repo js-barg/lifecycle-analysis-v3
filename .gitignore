@@ -1,0 +1,13 @@
+# --- Dependencies ---
+node_modules/
+
+# --- Security (Keep these!) ---
+.env*
+
+# --- IDE Settings ---
+.vscode/
+.idea/
+
+# --- OS Junk ---
+.DS_Store
+Thumbs.db
