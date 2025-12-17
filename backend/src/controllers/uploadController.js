@@ -4,9 +4,14 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const Papa = require('papaparse');
 const ExcelJS = require('exceljs');
+const XLSX = require('xlsx'); // SheetJS for XLSB support
 const jobStorage = require('../utils/jobStorage');
 const phase1FilterService = require('../services/phase1FilterService');
 const fs = require('fs');
+
+// Minimum valid date threshold - dates before this are treated as blank
+// This prevents invalid Excel serial dates (like 0, 1, 2) from being interpreted as dates in 1900-1905
+const MIN_VALID_DATE = new Date('1970-01-01');
 
 // Import columnMapper - if this doesn't exist, the normalization functions are included below
 let processData;
@@ -106,7 +111,127 @@ const upload = multer({
   }
 });
 
-// Parse Excel file
+// Helper function to validate and format dates
+// Returns null for invalid dates (before 1970) which should be treated as blank
+function formatExcelDate(value) {
+  if (!value) return null;
+  
+  let dateObj;
+  
+  // If it's already a Date object
+  if (value instanceof Date) {
+    dateObj = value;
+  } 
+  // If it's a number (Excel serial date)
+  else if (typeof value === 'number') {
+    // Excel serial dates: days since 1900-01-01 (or 1904-01-01 for Mac)
+    // Very small numbers (< 25569 which is 1970-01-01) are likely invalid
+    if (value < 25569) {
+      return null; // Invalid date - treat as blank
+    }
+    // Convert Excel serial to JavaScript Date
+    dateObj = new Date((value - 25569) * 86400 * 1000);
+  }
+  // If it's a string, try to parse it
+  else if (typeof value === 'string') {
+    dateObj = new Date(value);
+  }
+  else {
+    return null;
+  }
+  
+  // Validate the date is reasonable (after 1970)
+  if (!dateObj || isNaN(dateObj.getTime()) || dateObj < MIN_VALID_DATE) {
+    return null;
+  }
+  
+  return dateObj.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+}
+
+// Parse XLSB files using SheetJS (xlsx library)
+async function parseXlsb(buffer) {
+  try {
+    console.log('Parsing XLSB file using SheetJS...');
+    
+    // Read the workbook from buffer
+    const workbook = XLSX.read(buffer, { 
+      type: 'buffer',
+      cellDates: true,  // Parse dates as Date objects
+      cellNF: false,
+      cellText: false
+    });
+    
+    // Get the first sheet
+    const sheetName = workbook.SheetNames[0];
+    if (!sheetName) {
+      throw new Error('No worksheet found in XLSB file');
+    }
+    
+    const worksheet = workbook.Sheets[sheetName];
+    console.log(`Processing sheet: ${sheetName}`);
+    
+    // Convert to JSON with headers
+    const rawData = XLSX.utils.sheet_to_json(worksheet, {
+      header: 1, // Get as array of arrays first to see headers
+      defval: null,
+      raw: false,  // Get formatted strings for dates
+      dateNF: 'yyyy-mm-dd'
+    });
+    
+    if (rawData.length === 0) {
+      throw new Error('No data found in XLSB file');
+    }
+    
+    // First row is headers
+    const headers = rawData[0].map(h => (h ? String(h).trim() : ''));
+    console.log('XLSB headers found:', headers);
+    
+    // Convert remaining rows to objects
+    const data = [];
+    for (let i = 1; i < rawData.length; i++) {
+      const row = rawData[i];
+      if (!row || row.every(cell => cell === null || cell === undefined || cell === '')) {
+        continue; // Skip empty rows
+      }
+      
+      const rowData = {};
+      let hasValidData = false;
+      
+      headers.forEach((header, idx) => {
+        if (header) {
+          let value = row[idx];
+          
+          // Handle date values - validate they're reasonable
+          if (value instanceof Date) {
+            value = formatExcelDate(value);
+          }
+          // Handle numeric values that might be dates
+          else if (typeof value === 'number' && header.toLowerCase().includes('date')) {
+            value = formatExcelDate(value);
+          }
+          
+          rowData[header] = value;
+          if (value !== null && value !== undefined && value !== '') {
+            hasValidData = true;
+          }
+        }
+      });
+      
+      if (hasValidData) {
+        data.push(rowData);
+      }
+    }
+    
+    console.log(`Successfully parsed ${data.length} rows from XLSB file`);
+    return data;
+    
+  } catch (error) {
+    console.error('XLSB parsing error:', error);
+    throw new Error(`Failed to parse XLSB file: ${error.message}. Please try saving as XLSX format in Excel.`);
+  }
+}
+
+// Parse Excel file (XLSX/XLS) using ExcelJS
 async function parseExcel(buffer) {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer);
@@ -136,13 +261,29 @@ async function parseExcel(buffer) {
         if (header) {
           // Handle different cell types
           let value = cell.value;
+          
           if (cell.type === ExcelJS.ValueType.Date) {
-            value = cell.value.toISOString().split('T')[0]; // Format date as YYYY-MM-DD
+            // Validate and format the date - returns null for invalid dates
+            value = formatExcelDate(cell.value);
           } else if (cell.type === ExcelJS.ValueType.RichText) {
             value = cell.value.richText.map(rt => rt.text).join('');
           } else if (typeof value === 'object' && value !== null) {
-            value = value.toString();
+            // Handle formula results and other objects
+            if (value.result !== undefined) {
+              value = value.result;
+              // Check if the result is a date
+              if (value instanceof Date) {
+                value = formatExcelDate(value);
+              }
+            } else {
+              value = value.toString();
+            }
           }
+          // Additional check: if this is a date column with a number, validate it
+          else if (typeof value === 'number' && header.toLowerCase().includes('date')) {
+            value = formatExcelDate(value);
+          }
+          
           rowData[header] = value;
         }
       });
@@ -188,10 +329,14 @@ const uploadFile = async (req, res) => {
         parsedData = results;
         console.log('CSV parsed rows:', parsedData.length);
         
-      } else if (fileExt === '.xlsx' || fileExt === '.xlsb' || fileExt === '.xls') {
-        // Parse Excel file
+      } else if (fileExt === '.xlsx' || fileExt === '.xls') {
+        // Parse XLSX/XLS files using ExcelJS
         parsedData = await parseExcel(req.file.buffer);
-        console.log('Excel parsed rows:', parsedData.length);
+        console.log('Excel (XLSX/XLS) parsed rows:', parsedData.length);
+      } else if (fileExt === '.xlsb') {
+        // Parse XLSB files using SheetJS (xlsx library)
+        parsedData = await parseXlsb(req.file.buffer);
+        console.log('Excel (XLSB) parsed rows:', parsedData.length);
       } else {
         return res.status(400).json({ error: 'Unsupported file type' });
       }
