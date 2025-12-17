@@ -99,7 +99,10 @@ const phase3Controller = {
             return res.status(404).json({ error: 'Phase 2 job not found' });
           }
         } catch (dbError) {
-          console.error('Error retrieving Phase 2 job from database:', dbError);
+          console.error('❌ Error retrieving Phase 2 job from database:', dbError);
+          console.error('   Error code:', dbError.code);
+          console.error('   Error message:', dbError.message);
+          
           // Check if error is due to missing table
           if (dbError.message && dbError.message.includes('does not exist')) {
             console.error('❌ phase2_jobs table does not exist. Please run the database migration.');
@@ -109,9 +112,21 @@ const phase3Controller = {
               migrationError: true
             });
           }
+          
+          // Check if it's a connection error
+          if (dbError.code === 'ECONNREFUSED' || dbError.message.includes('ECONNREFUSED')) {
+            console.error('❌ Database connection refused. DATABASE_URL may be incorrect.');
+            return res.status(500).json({ 
+              error: 'Database connection failed',
+              details: 'Cannot connect to database. Check DATABASE_URL secret is correct.',
+              connectionError: true
+            });
+          }
+          
           return res.status(500).json({ 
             error: 'Failed to retrieve Phase 2 job data',
             details: dbError.message,
+            errorCode: dbError.code,
             stack: process.env.NODE_ENV === 'production' ? undefined : dbError.stack
           });
         }
