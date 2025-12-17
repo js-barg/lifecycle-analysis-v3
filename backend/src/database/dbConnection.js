@@ -7,18 +7,30 @@ if (process.env.NODE_ENV !== 'production') {
 
 // Get database URL - in Cloud Run this comes from secrets
 // Trim whitespace/newlines that might be in the secret value
-const databaseUrl = process.env.DATABASE_URL ? process.env.DATABASE_URL.trim() : null;
+let databaseUrl = null;
+try {
+  if (process.env.DATABASE_URL) {
+    databaseUrl = String(process.env.DATABASE_URL).trim();
+    // Remove any trailing newlines or whitespace
+    databaseUrl = databaseUrl.replace(/\n$/, '').replace(/\r$/, '').trim();
+  }
+} catch (e) {
+  console.error('❌ Error processing DATABASE_URL:', e.message);
+}
 
 // Log connection info (without exposing credentials)
-if (databaseUrl) {
+if (databaseUrl && databaseUrl.length > 0) {
   try {
     const urlInfo = new URL(databaseUrl);
     console.log(`📊 Database connection: ${urlInfo.protocol}//${urlInfo.hostname}${urlInfo.pathname}`);
   } catch (urlError) {
     console.warn('⚠️  Could not parse DATABASE_URL:', urlError.message);
+    console.warn('   DATABASE_URL length:', databaseUrl ? databaseUrl.length : 0);
+    // Don't crash - continue with fallback
+    databaseUrl = null;
   }
 } else {
-  console.error('❌ DATABASE_URL environment variable is not set!');
+  console.error('❌ DATABASE_URL environment variable is not set or empty!');
   console.error('   Falling back to localhost (this will fail in Cloud Run)');
 }
 
