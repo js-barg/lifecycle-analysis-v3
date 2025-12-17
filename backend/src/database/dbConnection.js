@@ -44,10 +44,10 @@ try {
       const urlInfo = new URL(databaseUrl);
       console.log(`📊 Database connection: ${urlInfo.protocol}//${urlInfo.hostname}${urlInfo.pathname}`);
     } catch (urlError) {
-      console.warn('⚠️  Could not parse DATABASE_URL:', urlError.message);
+      console.warn('⚠️  Could not parse DATABASE_URL for logging (this is OK for socket URLs):', urlError.message);
       console.warn('   DATABASE_URL length:', databaseUrl ? databaseUrl.length : 0);
-      // Don't crash - continue with fallback
-      databaseUrl = null;
+      // DON'T reset databaseUrl - the connection string is still valid even if URL parsing fails
+      // Socket URLs like postgresql://user:pass@/db?host=/cloudsql/... may not parse as standard URLs
     }
   } else {
     console.error('❌ DATABASE_URL environment variable is not set or empty!');
@@ -67,6 +67,21 @@ if (!databaseUrl) {
   console.error('   NODE_ENV:', process.env.NODE_ENV);
 } else {
   console.log('✅ Using DATABASE_URL for connection (length:', databaseUrl.length, ')');
+  
+  // Check if we're in production and using localhost (which won't work with Cloud SQL)
+  if (process.env.NODE_ENV === 'production' || process.env.K_SERVICE) {
+    // Check if connection string contains localhost or 127.0.0.1
+    if (databaseUrl.includes('localhost') || databaseUrl.includes('127.0.0.1') || databaseUrl.includes(':5432')) {
+      console.error('❌ CRITICAL: DATABASE_URL appears to use localhost/TCP connection in Cloud Run!');
+      console.error('   Cloud Run requires Unix socket connection format:');
+      console.error('   postgresql://user:password@/database?host=/cloudsql/PROJECT_ID:REGION:INSTANCE_NAME&sslmode=disable');
+      console.error('   Current connection string starts with:', databaseUrl.substring(0, 50) + '...');
+      console.error('   Please update the DATABASE_URL secret using:');
+      console.error('   ./update-database-secret.sh (or .ps1 on Windows)');
+    } else if (databaseUrl.includes('/cloudsql/')) {
+      console.log('✅ DATABASE_URL uses Cloud SQL Unix socket format (correct for Cloud Run)');
+    }
+  }
 }
 
 const pool = new Pool({
@@ -92,7 +107,24 @@ if (process.env.NODE_ENV === 'production') {
       })
       .catch((err) => {
         console.error('❌ Database connection test failed:', err.message);
+        console.error('   Error code:', err.code);
         console.error('   DATABASE_URL:', databaseUrl ? 'SET (but connection failed)' : 'NOT SET');
+        
+        // Provide helpful error messages for common issues
+        if (err.code === 'ECONNREFUSED') {
+          console.error('');
+          console.error('   🔧 TROUBLESHOOTING: Connection refused (ECONNREFUSED)');
+          if (process.env.NODE_ENV === 'production' || process.env.K_SERVICE) {
+            console.error('   This usually means:');
+            console.error('   1. DATABASE_URL is using localhost/127.0.0.1 instead of Cloud SQL Unix socket');
+            console.error('   2. The secret needs to be updated with format:');
+            console.error('      postgresql://user:password@/database?host=/cloudsql/PROJECT_ID:REGION:INSTANCE_NAME&sslmode=disable');
+            console.error('   3. Run: ./update-database-secret.sh to fix this');
+          } else {
+            console.error('   This usually means PostgreSQL is not running locally');
+            console.error('   Or DATABASE_URL is pointing to wrong host/port');
+          }
+        }
         // Don't throw - let the app start, connection will be retried on actual use
       });
   }, 1000); // Wait 1 second after startup
