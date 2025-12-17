@@ -33,5 +33,7 @@ steps:
       - 'lifecycle-analysis-477518:us-central1:lifecycle-db'
       - '--set-secrets'
       - 'DATABASE_URL=database-url:latest,GOOGLE_CSE_API_KEY=google-cse-api:latest,GOOGLE_CSE_CX=google-cse-cx:latest,GEMINI_API_KEY=gemini-api-key:latest'
+      - '--set-env-vars'
+      - 'GEMINI_MODEL=gemini-1.5-flash'
 
 timeout: '1200s'
