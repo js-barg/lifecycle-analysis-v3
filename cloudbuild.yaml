@@ -3,14 +3,17 @@ options:
 
 steps:
   # Build the container image (--no-cache to ensure fresh build with latest code)
+  # Use commit SHA as tag to force new revision
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '--no-cache', '-t', 'gcr.io/$PROJECT_ID/lifecycle-analysis:latest', '.']
+    args: ['build', '--no-cache', '-t', 'gcr.io/$PROJECT_ID/lifecycle-analysis:$COMMIT_SHA', '-t', 'gcr.io/$PROJECT_ID/lifecycle-analysis:latest', '.']
   
   # Push the image to Container Registry
   - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/lifecycle-analysis:$COMMIT_SHA']
+  - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'gcr.io/$PROJECT_ID/lifecycle-analysis:latest']
   
-  # Deploy to Cloud Run
+  # Deploy to Cloud Run (use commit SHA to force new revision)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -18,7 +21,7 @@ steps:
       - 'deploy'
       - 'lifecycle-analysis'
       - '--image'
-      - 'gcr.io/$PROJECT_ID/lifecycle-analysis:latest'
+      - 'gcr.io/$PROJECT_ID/lifecycle-analysis:$COMMIT_SHA'
       - '--region'
       - 'us-central1'
       - '--platform'
