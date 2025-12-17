@@ -542,6 +542,31 @@ const saveForPhase3 = async (req, res) => {
     // In Cloud Run, different instances don't share in-memory storage
     const db = require('../database/dbConnection');
     try {
+      // Ensure table exists (auto-create if needed)
+      try {
+        await db.query(`
+          CREATE TABLE IF NOT EXISTS phase2_jobs (
+            job_id VARCHAR(255) PRIMARY KEY,
+            customer_name VARCHAR(255),
+            phase3_ready BOOLEAN DEFAULT false,
+            phase3_ready_at TIMESTAMP,
+            phase3_filter_name VARCHAR(255),
+            phase3_filtered_items JSONB,
+            phase3_stats JSONB,
+            all_items JSONB,
+            created_at TIMESTAMP DEFAULT NOW(),
+            updated_at TIMESTAMP DEFAULT NOW()
+          )
+        `);
+        await db.query(`
+          CREATE INDEX IF NOT EXISTS idx_phase2_jobs_phase3_ready 
+          ON phase2_jobs(phase3_ready) WHERE phase3_ready = true
+        `);
+        console.log('✅ phase2_jobs table verified/created');
+      } catch (createError) {
+        console.warn('⚠️  Could not ensure phase2_jobs table exists (may already exist):', createError.message);
+      }
+      
       await db.query(
         `INSERT INTO phase2_jobs (job_id, customer_name, phase3_ready, phase3_ready_at, phase3_filter_name, phase3_filtered_items, phase3_stats, all_items, updated_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
@@ -569,6 +594,7 @@ const saveForPhase3 = async (req, res) => {
     } catch (dbError) {
       // Log but don't fail - in-memory storage still works for local dev
       console.error('⚠️  Failed to save Phase 2 job to database (non-critical):', dbError.message);
+      console.error('   Full error:', dbError);
     }
 
     res.json({
