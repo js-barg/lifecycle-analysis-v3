@@ -31,6 +31,14 @@ try {
 
 // Log connection info (without exposing credentials) - wrapped in try/catch
 try {
+  // Debug: Check if DATABASE_URL exists in process.env
+  console.log('🔍 DATABASE_URL check:');
+  console.log('   process.env.DATABASE_URL exists?', !!process.env.DATABASE_URL);
+  console.log('   process.env.DATABASE_URL type:', typeof process.env.DATABASE_URL);
+  console.log('   process.env.DATABASE_URL length:', process.env.DATABASE_URL ? process.env.DATABASE_URL.length : 0);
+  console.log('   NODE_ENV:', process.env.NODE_ENV);
+  console.log('   databaseUrl after processing:', databaseUrl ? `SET (length: ${databaseUrl.length})` : 'NULL');
+  
   if (databaseUrl && databaseUrl.length > 0) {
     try {
       const urlInfo = new URL(databaseUrl);
@@ -44,10 +52,21 @@ try {
   } else {
     console.error('❌ DATABASE_URL environment variable is not set or empty!');
     console.error('   Falling back to localhost (this will fail in Cloud Run)');
+    console.error('   This means the secret is not being injected properly!');
   }
 } catch (e) {
   console.error('❌ Error in database URL logging:', e.message);
   // Continue anyway - don't crash the module
+}
+
+// Log what we're using for connection (for debugging)
+if (!databaseUrl) {
+  console.error('❌ CRITICAL: DATABASE_URL is null/empty, using localhost fallback (will fail in Cloud Run)');
+  console.error('   process.env.DATABASE_URL exists?', !!process.env.DATABASE_URL);
+  console.error('   process.env.DATABASE_URL length:', process.env.DATABASE_URL ? process.env.DATABASE_URL.length : 0);
+  console.error('   NODE_ENV:', process.env.NODE_ENV);
+} else {
+  console.log('✅ Using DATABASE_URL for connection (length:', databaseUrl.length, ')');
 }
 
 const pool = new Pool({
